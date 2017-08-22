@@ -183,7 +183,7 @@ describe('Effort -> Harvest ->', () => {
     it('Test Get Time Entries', function() {
       Rest.get.resolves({ data: TIMERESPONSE, response: null });
   
-      return harvest.getTimeEntries(EFFORTINFO, SINCETIME, errorBody)
+      return harvest.getTimeEntries(EFFORTINFO, SINCETIME, errorBody, localConstants)
         .then(function(response) {
           Should(response.length).be.above(0);
           Should(response[0].day_entry).have.property('spent_at');
@@ -194,7 +194,7 @@ describe('Effort -> Harvest ->', () => {
     it('Test Getting an empty set Time Entries', function() {
       Rest.get.resolves({ data: [], response: null })
   
-      return harvest.getTimeEntries(EFFORTINFO, null, errorBody)
+      return harvest.getTimeEntries(EFFORTINFO, null, errorBody, localConstants)
         .then(function(response) {
           Should(response.length).equal(0);
         });
@@ -205,7 +205,7 @@ describe('Effort -> Harvest ->', () => {
   
       var badEffort = JSON.parse(JSON.stringify(EFFORTINFO));
       badEffort.project = BADPROJECT;
-      return harvest.getTimeEntries(badEffort, SINCETIME, errorBody)
+      return harvest.getTimeEntries(badEffort, SINCETIME, errorBody, localConstants)
         .catch((response) => {
           Should(response).not.be.null;
           Should(response.statusCode).equal(CODENOTFOUND);
@@ -358,7 +358,7 @@ describe('Effort -> Harvest ->', () => {
     it('returns an error when the url is invalid.', () => {
       return CO(function* () {
         const project = R.mergeDeepRight(aProject, { effort: { url: 'invalid url' } });
-        const result = yield harvest.testEffort(project);
+        const result = yield harvest.testEffort(project, localConstants);
         Should(result.status).equal(localConstants.STATUSERROR);
       });
     });
@@ -366,7 +366,7 @@ describe('Effort -> Harvest ->', () => {
     it('returns an error when the harvest [project] is an empty string', () => {
       return CO(function* () {
         const project = R.mergeDeepRight(aProject, { effort: { project: '' } });
-        const result = yield harvest.testEffort(project);
+        const result = yield harvest.testEffort(project, localConstants);
         Should(result.status).equal(localConstants.STATUSERROR);
       });
     });
@@ -375,7 +375,7 @@ describe('Effort -> Harvest ->', () => {
       return CO(function* () {
         const effort = R.omit(['project'], aProject.effort);
         const project = R.mergeDeepRight(R.omit(['effort'], aProject), { effort });
-        const result = yield harvest.testEffort(project);
+        const result = yield harvest.testEffort(project, localConstants);
         Should(result.status).equal(localConstants.STATUSERROR);
       });
     });
@@ -383,7 +383,7 @@ describe('Effort -> Harvest ->', () => {
     it('returns an error when [authPolicy] is an empty string', () => {
       return CO(function* () {
         const project = R.mergeDeepRight(aProject, { effort: { authPolicy: '' } });
-        const result = yield harvest.testEffort(project);
+        const result = yield harvest.testEffort(project, localConstants);
         Should(result.status).equal(localConstants.STATUSERROR);
       });
     });
@@ -392,7 +392,7 @@ describe('Effort -> Harvest ->', () => {
       return CO(function* () {
         const effort = R.omit(['authPolicy'], aProject.effort);
         const project = R.mergeDeepRight(R.omit(['effort'], aProject), { effort });
-        const result = yield harvest.testEffort(project);
+        const result = yield harvest.testEffort(project, localConstants);
         Should(result.status).equal(localConstants.STATUSERROR);
       });
     });
@@ -400,7 +400,7 @@ describe('Effort -> Harvest ->', () => {
     it('returns an error when [userData] is an empty string', () => {
       return CO(function* () {
         const project = R.mergeDeepRight(aProject, { effort: { userData: '' } });
-        const result = yield harvest.testEffort(project);
+        const result = yield harvest.testEffort(project, localConstants);
         Should(result.status).equal(localConstants.STATUSERROR);
       });
     });
@@ -409,7 +409,7 @@ describe('Effort -> Harvest ->', () => {
       return CO(function* () {
         const effort = R.omit(['userData'], aProject.effort);
         const project = R.mergeDeepRight(R.omit(['effort'], aProject), { effort });
-        const result = yield harvest.testEffort(project);
+        const result = yield harvest.testEffort(project, localConstants);
         Should(result.status).equal(localConstants.STATUSERROR);
       });
     });
@@ -417,7 +417,7 @@ describe('Effort -> Harvest ->', () => {
     it('returns an error when [role] is an empty array', () => {
       return CO(function* () {
         const project = R.mergeDeepRight(aProject, { effort: { role: '' } });
-        const result = yield harvest.testEffort(project);
+        const result = yield harvest.testEffort(project, localConstants);
         Should(result.status).equal(localConstants.STATUSERROR);
       });
     });
@@ -426,7 +426,7 @@ describe('Effort -> Harvest ->', () => {
       return CO(function* () {
         const effort = R.omit(['role'], aProject.effort);
         const project = R.mergeDeepRight(R.omit(['effort'], aProject), { effort });
-        const result = yield harvest.testEffort(project);
+        const result = yield harvest.testEffort(project, localConstants);
         Should(result.status).equal(localConstants.STATUSERROR);
       });
     });
@@ -434,7 +434,7 @@ describe('Effort -> Harvest ->', () => {
     it('returns green when the request to harvest is successful', () => {
       return CO(function* () {
         sandbox.stub(Rest, 'get').resolves();
-        const result = yield harvest.testEffort(aProject);
+        const result = yield harvest.testEffort(aProject, localConstants);
         Should(result.status).equal(localConstants.STATUSOK);
       });
     });
@@ -442,7 +442,7 @@ describe('Effort -> Harvest ->', () => {
     it('returns red when the request to harvest fails', () => {
       return CO(function* () {
         sandbox.stub(Rest, 'get').rejects();
-        const result = yield harvest.testEffort(aProject);
+        const result = yield harvest.testEffort(aProject, localConstants);
         Should(result.status).equal(localConstants.STATUSERROR);
       });
     });

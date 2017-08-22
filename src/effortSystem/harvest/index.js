@@ -6,7 +6,6 @@ const ValidUrl = require('valid-url');
 
 const Rest = require('../../restler-as-promise');
 const utils = require('../../utils');
-const localConstants = require('../../constants');
 
 Log4js.configure('config/log4js_config.json', {});
 const logger = Log4js.getLogger();
@@ -61,10 +60,9 @@ exports.transformRawToCommon = function(timeData) {
 }
 
 exports.getTimeEntries = function(effortInfo, startDate, errorBody, constants) {
-  const mergedConstants = R.merge(localConstants, constants);
   logger.info(`getTimeEntries since ${startDate}`);
 
-  var harvestURL = `${effortInfo.url}/projects/${effortInfo.project}/entries?from=${mergedConstants.DEFAULTSTARTDATE}&to=${dateFormatIWant()}&updated_since=${startDate}+00:00`;
+  var harvestURL = `${effortInfo.url}/projects/${effortInfo.project}/entries?from=${constants.DEFAULTSTARTDATE}&to=${dateFormatIWant()}&updated_since=${startDate}+00:00`;
   logger.debug(`getTimeEntries->harvestURL ${harvestURL}`);
   return Rest.get(
     encodeURI(harvestURL),
@@ -122,41 +120,40 @@ exports.replaceTaskIdwithName = function(timeData, taskData) {
 }
 
 exports.testEffort = function(project, constants) {
-  const mergedConstants = R.merge(localConstants, constants);
   logger.debug(`Harvest -> testEffort() for ${project.name}`);
   if (!ValidUrl.isUri(project.effort.url)) {
     logger.debug(`ERROR, invalid url: ${project.effort.url} on project ${project.name}`)
-    return Promise.resolve({ status: mergedConstants.STATUSERROR, data: utils.validationResponseMessageFormat(`invalid effort URL [${project.effort.url}])`) });
+    return Promise.resolve({ status: constants.STATUSERROR, data: utils.validationResponseMessageFormat(`invalid effort URL [${project.effort.url}])`) });
   }
   
   if (R.isNil(project.effort.project) || R.isEmpty(project.effort.project)) {
-    return Promise.resolve({ status: mergedConstants.STATUSERROR, data: utils.validationResponseMessageFormat(`[Project] must be a valid Harvest project name`) });
+    return Promise.resolve({ status: constants.STATUSERROR, data: utils.validationResponseMessageFormat(`[Project] must be a valid Harvest project name`) });
   }
   
   if (R.isNil(project.effort.authPolicy) || R.isEmpty(project.effort.authPolicy)) {
-    return Promise.resolve({ status: mergedConstants.STATUSERROR, data: utils.validationResponseMessageFormat(`[Auth Policy] must be filled out`) });
+    return Promise.resolve({ status: constants.STATUSERROR, data: utils.validationResponseMessageFormat(`[Auth Policy] must be filled out`) });
   }
   
   if (R.isNil(project.effort.userData) || R.isEmpty(project.effort.userData)) {
-    return Promise.resolve({ status: mergedConstants.STATUSERROR, data: utils.validationResponseMessageFormat(`[User Data] must be filled out`) });
+    return Promise.resolve({ status: constants.STATUSERROR, data: utils.validationResponseMessageFormat(`[User Data] must be filled out`) });
   }
   
   if (R.isNil(project.effort.role) || R.isEmpty(project.effort.role)) {
-    return Promise.resolve({ status: mergedConstants.STATUSERROR, data: utils.validationResponseMessageFormat(`Missing [Role] information`) });
+    return Promise.resolve({ status: constants.STATUSERROR, data: utils.validationResponseMessageFormat(`Missing [Role] information`) });
   }
   
-  var harvestURL = `${project.effort.url}/projects/${project.effort.project}/entries?from=${mergedConstants.DEFAULTSTARTDATE}&to=${dateFormatIWant()}&updated_since=${moment().toISOString()}`;
+  var harvestURL = `${project.effort.url}/projects/${project.effort.project}/entries?from=${constants.DEFAULTSTARTDATE}&to=${dateFormatIWant()}&updated_since=${moment().toISOString()}`;
   
   return Rest.get(
     encodeURI(harvestURL),
     {headers: utils.createBasicAuthHeader(project.effort.userData)}
-  ).then(() => ({ status: mergedConstants.STATUSOK }))
+  ).then(() => ({ status: constants.STATUSOK }))
   .catch((error) => {
     utils.logHttpError(logger, error);
-    return ({ status: mergedConstants.STATUSERROR, data: error.data });
+    return ({ status: constants.STATUSERROR, data: error.data });
   });
 }
 
 function dateFormatIWant() {
-  moment.utc().format(localConstants.DBDATEFORMAT)
+  moment.utc().format('YYYY-MM-DD');
 }

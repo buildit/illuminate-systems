@@ -8,7 +8,6 @@ const moment = require('moment');
 const utils = require('../../utils')
 const helperClasses = require('../../helperClasses');
 const Rest = require('../../restler-as-promise');
-const localConstants = require('../../constants');
 
 Log4js.configure('config/log4js_config.json', {});
 const logger = Log4js.getLogger();
@@ -113,35 +112,34 @@ module.exports.loadDemand = function(demandInfo, issuesSoFar, sinceTime, errorBo
 }
 
 module.exports.testDemand = function(project, constants) {
-  const mergedConstants = R.merge(localConstants, constants);
   logger.info(`testDemand() for JIRA Project ${project.name}`);
   if (!ValidUrl.isUri(project.demand.url)) {
-    return Promise.resolve({ status: mergedConstants.STATUSERROR, data: utils.validationResponseMessageFormat(`invalid demand URL [${project.demand.url}]`) });
+    return Promise.resolve({ status: constants.STATUSERROR, data: utils.validationResponseMessageFormat(`invalid demand URL [${project.demand.url}]`) });
   }
 
   if (R.isNil(project.demand.project) || R.isEmpty(project.demand.project)) {
-    return Promise.resolve({ status: mergedConstants.STATUSERROR, data: utils.validationResponseMessageFormat(`[Project] must be a valid Jira project name`) });
+    return Promise.resolve({ status: constants.STATUSERROR, data: utils.validationResponseMessageFormat(`[Project] must be a valid Jira project name`) });
   }
 
   if (R.isNil(project.demand.authPolicy) || R.isEmpty(project.demand.authPolicy)) {
-    return Promise.resolve({ status: mergedConstants.STATUSERROR, data: utils.validationResponseMessageFormat(`[Auth Policy] must be filled out`) });
+    return Promise.resolve({ status: constants.STATUSERROR, data: utils.validationResponseMessageFormat(`[Auth Policy] must be filled out`) });
   }
 
   if (R.isNil(project.demand.userData) || R.isEmpty(project.demand.userData)) {
-    return Promise.resolve({ status: mergedConstants.STATUSERROR, data: utils.validationResponseMessageFormat(`[User Data] must be filled out`) });
+    return Promise.resolve({ status: constants.STATUSERROR, data: utils.validationResponseMessageFormat(`[User Data] must be filled out`) });
   }
 
   if (R.isNil(project.demand.flow) || R.isEmpty(project.demand.flow)) {
-    return Promise.resolve({ status: mergedConstants.STATUSERROR, data: utils.validationResponseMessageFormat(`Missing [Flow] information`) });
+    return Promise.resolve({ status: constants.STATUSERROR, data: utils.validationResponseMessageFormat(`Missing [Flow] information`) });
   }
 
   return Rest.get(
-    project.demand.url + buildJQL(project.demand.project, 0, moment().format(mergedConstants.DBDATEFORMAT)),
+    project.demand.url + buildJQL(project.demand.project, 0, moment().format(constants.DBDATEFORMAT), constants),
     {headers: utils.createBasicAuthHeader(project.demand.userData)}
-  ).then(() => ({ status: mergedConstants.STATUSOK }))
+  ).then(() => ({ status: constants.STATUSOK }))
   .catch((error) => {
     utils.logHttpError(logger, error);
-    return ({ status: mergedConstants.STATUSERROR, data: error.data });
+    return ({ status: constants.STATUSERROR, data: error.data });
   });
 }
 

@@ -216,7 +216,7 @@ describe('Defect -> Jira ->', () => {
     it('Test Getting an empty set of Jira Defects', function() {
       Rest.get.resolves({ data: EMPTYJIRARESPONSE, response: jiraResponse });
   
-      return jira.loadDefects(DEFECTINFO, [])
+      return jira.loadDefects(DEFECTINFO, [], null, null, localConstants)
         .then(function(response) {
           Should(response.length).equal(0);
         });
@@ -238,7 +238,7 @@ describe('Defect -> Jira ->', () => {
     it('Test Getting an empty set of Jira defects', function() {
       Rest.get.resolves({ data: SINGLEJIRARESPOSE, response: jiraResponse });
   
-      return jira.loadDefects(DEFECTINFO, [])
+      return jira.loadDefects(DEFECTINFO, [], null, null, localConstants)
         .then(function(response) {
           Should(response.length).equal(1);
         });
@@ -301,7 +301,7 @@ describe('Defect -> Jira ->', () => {
     it('returns an error when the url is invalid.', () => {
       return CO(function* () {
         const project = R.mergeDeepRight(aProject, { defect: { url: 'invalid url' } });
-        const result = yield jira.testDefect(project);
+        const result = yield jira.testDefect(project, localConstants);
         Should(result.status).equal(localConstants.STATUSERROR);
       });
     });
@@ -309,7 +309,7 @@ describe('Defect -> Jira ->', () => {
     it('returns an error when the jira [project] is an empty string', () => {
       return CO(function* () {
         const project = R.mergeDeepRight(aProject, { defect: { project: '' } });
-        const result = yield jira.testDefect(project);
+        const result = yield jira.testDefect(project, localConstants);
         Should(result.status).equal(localConstants.STATUSERROR);
       });
     });
@@ -318,7 +318,7 @@ describe('Defect -> Jira ->', () => {
       return CO(function* () {
         const defect = R.omit(['project'], aProject.defect);
         const project = R.mergeDeepRight(R.omit(['defect'], aProject), { defect });
-        const result = yield jira.testDefect(project);
+        const result = yield jira.testDefect(project, localConstants);
         Should(result.status).equal(localConstants.STATUSERROR);
       });
     });
@@ -326,7 +326,7 @@ describe('Defect -> Jira ->', () => {
     it('returns an error when [authPolicy] is an empty string', () => {
       return CO(function* () {
         const project = R.mergeDeepRight(aProject, { defect: { authPolicy: '' } });
-        const result = yield jira.testDefect(project);
+        const result = yield jira.testDefect(project, localConstants);
         Should(result.status).equal(localConstants.STATUSERROR);
       });
     });
@@ -335,7 +335,7 @@ describe('Defect -> Jira ->', () => {
       return CO(function* () {
         const defect = R.omit(['authPolicy'], aProject.defect);
         const project = R.mergeDeepRight(R.omit(['defect'], aProject), { defect });
-        const result = yield jira.testDefect(project);
+        const result = yield jira.testDefect(project, localConstants);
         Should(result.status).equal(localConstants.STATUSERROR);
       });
     });
@@ -343,7 +343,7 @@ describe('Defect -> Jira ->', () => {
     it('returns an error when [userData] is an empty string', () => {
       return CO(function* () {
         const project = R.mergeDeepRight(aProject, { defect: { userData: '' } });
-        const result = yield jira.testDefect(project);
+        const result = yield jira.testDefect(project, localConstants);
         Should(result.status).equal(localConstants.STATUSERROR);
       });
     });
@@ -352,7 +352,7 @@ describe('Defect -> Jira ->', () => {
       return CO(function* () {
         const defect = R.omit(['userData'], aProject.defect);
         const project = R.mergeDeepRight(R.omit(['defect'], aProject), { defect });
-        const result = yield jira.testDefect(project);
+        const result = yield jira.testDefect(project, localConstants);
         Should(result.status).equal(localConstants.STATUSERROR);
       });
     });
@@ -360,7 +360,7 @@ describe('Defect -> Jira ->', () => {
     it('returns an error when [severity] is an empty array', () => {
       return CO(function* () {
         const project = R.mergeDeepRight(aProject, { defect: { severity: [] } });
-        const result = yield jira.testDefect(project);
+        const result = yield jira.testDefect(project, localConstants);
         Should(result.status).equal(localConstants.STATUSERROR);
       });
     });
@@ -369,7 +369,7 @@ describe('Defect -> Jira ->', () => {
       return CO(function* () {
         const defect = R.omit(['severity'], aProject.defect);
         const project = R.mergeDeepRight(R.omit(['defect'], aProject), { defect });
-        const result = yield jira.testDefect(project);
+        const result = yield jira.testDefect(project, localConstants);
         Should(result.status).equal(localConstants.STATUSERROR);
       });
     });
@@ -377,7 +377,7 @@ describe('Defect -> Jira ->', () => {
     it('returns green when the request to Jira is successful', () => {
       return CO(function* () {
         sandbox.stub(Rest, 'get').resolves({});
-        const result = yield jira.testDefect(aProject);
+        const result = yield jira.testDefect(aProject, localConstants);
         Should(result.status).equal(localConstants.STATUSOK);
       });
     })

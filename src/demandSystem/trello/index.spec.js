@@ -428,7 +428,7 @@ describe('Demand -> Trello ->', () => {
 
     it('stores the data if there is at least one story', () => {
       sandbox.stub(trello, 'loadDemand').resolves([{ some: 'raw' }, { ugly: 'data' }]);
-      return trello.loadRawData(DEMANDINFO, R.merge(processingInfo, { storageFunction }), '2017-08-09')
+      return trello.loadRawData(DEMANDINFO, R.merge(processingInfo, { storageFunction }), '2017-08-09', null, localConstants)
       .then(() => {
         Should(storageFunction.callCount).match(1);
       });
@@ -436,7 +436,7 @@ describe('Demand -> Trello ->', () => {
 
     it('stores nothing if there are no stories', () => {
       sandbox.stub(trello, 'loadDemand').resolves([]);
-      return trello.loadRawData(DEMANDINFO, R.merge(processingInfo, { storageFunction }), '2017-08-09')
+      return trello.loadRawData(DEMANDINFO, R.merge(processingInfo, { storageFunction }), '2017-08-09', null, localConstants)
       .then(() => {
         Should(storageFunction.callCount).match(0);
       });
@@ -456,35 +456,35 @@ describe('Demand -> Trello ->', () => {
     });
 
     it('filters out cards that do not have any actions', () => {
-      return trello.loadDemand(DEMANDINFO, '2000-01-01')
+      return trello.loadDemand(DEMANDINFO, '2000-01-01', null, localConstants)
       .then((data) => {
         Should(data.every(d => d.id !== idKeys.storyWithoutActions)).be.true();
       });
     });
 
     it('filters out cards that happen before the sinceTime variable', () => {
-      return trello.loadDemand(DEMANDINFO, '2017-07-01')
+      return trello.loadDemand(DEMANDINFO, '2017-07-01', null, localConstants)
       .then((data) => {
         Should(data.every(d => d.id !== idKeys.earlierStoryWithActions)).be.true();
       });
     });
 
     it('adds the _id and creationDate to all of the stories', () => {
-      return trello.loadDemand(DEMANDINFO, '2017-07-01')
+      return trello.loadDemand(DEMANDINFO, '2017-07-01', null, localConstants)
       .then((data) => {
         Should(data.every(d => d._id && d.creationDate)).be.true();
       });
     });
 
     it('adds the correct id to stories', () => {
-      return trello.loadDemand(DEMANDINFO, '2017-07-01')
+      return trello.loadDemand(DEMANDINFO, '2017-07-01', null, localConstants)
       .then((data) => {
         Should(data[0]._id).equal(idKeys.storyWithMultipleActions);
       });
     });
 
     it('adds the correct creationDate to stories', () => {
-      return trello.loadDemand(DEMANDINFO, '2017-07-01')
+      return trello.loadDemand(DEMANDINFO, '2017-07-01', null, localConstants)
       .then((data) => {
         Should(data[0].creationDate).equal('2017-08-07T21:45:23.000Z');
       });
@@ -499,7 +499,7 @@ describe('Demand -> Trello ->', () => {
 			}
 			Rest.get.restore();
 			sandbox.stub(Rest, 'get').rejects({ data: RAWTRELLOSTORY, response: { statusCode: HttpStatus.NOT_FOUND } });
-			return trello.loadDemand(DEMANDINFO, '2017-07-01', errorBody)
+			return trello.loadDemand(DEMANDINFO, '2017-07-01', errorBody, localConstants)
 			.catch(error => {
 				Should(error.statusCode).equal(HttpStatus.NOT_FOUND);
 			})
@@ -514,7 +514,7 @@ describe('Demand -> Trello ->', () => {
 			}
 			Rest.get.restore();
 			sandbox.stub(Rest, 'get').rejects(new Error('random error'));
-			return trello.loadDemand(DEMANDINFO, '2017-07-01', errorBody)
+			return trello.loadDemand(DEMANDINFO, '2017-07-01', errorBody, localConstants)
 			.catch(error => {
 				Should(error.message).equal('random error');
 			});
@@ -528,7 +528,7 @@ describe('Demand -> Trello ->', () => {
     before(() => {
       sandbox.stub(Rest, 'get').resolves({ data: RAWTRELLOSTORY, response: { statusCode: HttpStatus.OK } });
 
-      return trello.loadDemand(DEMANDINFO, '2017-07-01')
+      return trello.loadDemand(DEMANDINFO, '2017-07-01', null, localConstants)
       .then(raw => rawData = raw);
     });
 
@@ -560,7 +560,7 @@ describe('Demand -> Trello ->', () => {
 		it('returns an error when the url is invalid.', () => {
 			return CO(function* () {
 				const project = R.mergeDeepRight(aProject, { demand: { url: 'invalid url' } });
-				const result = yield trello.testDemand(project);
+				const result = yield trello.testDemand(project, localConstants);
 				Should(result.status).equal(localConstants.STATUSERROR);
 			});
 		});
@@ -568,7 +568,7 @@ describe('Demand -> Trello ->', () => {
 		it('returns an error when the trello [project] is an empty string', () => {
 			return CO(function* () {
 				const project = R.mergeDeepRight(aProject, { demand: { project: '' } });
-				const result = yield trello.testDemand(project);
+				const result = yield trello.testDemand(project, localConstants);
 				Should(result.status).equal(localConstants.STATUSERROR);
 			});
 		});
@@ -577,7 +577,7 @@ describe('Demand -> Trello ->', () => {
 			return CO(function* () {
 				const demand = R.omit(['project'], aProject.demand);
 				const project = R.mergeDeepRight(R.omit(['demand'], aProject), { demand });
-				const result = yield trello.testDemand(project);
+				const result = yield trello.testDemand(project, localConstants);
 				Should(result.status).equal(localConstants.STATUSERROR);
 			});
 		});
@@ -585,7 +585,7 @@ describe('Demand -> Trello ->', () => {
 		it('returns an error when [authPolicy] is an empty string', () => {
 			return CO(function* () {
 				const project = R.mergeDeepRight(aProject, { demand: { authPolicy: '' } });
-				const result = yield trello.testDemand(project);
+				const result = yield trello.testDemand(project, localConstants);
 				Should(result.status).equal(localConstants.STATUSERROR);
 			});
 		});
@@ -594,7 +594,7 @@ describe('Demand -> Trello ->', () => {
 			return CO(function* () {
 				const demand = R.omit(['authPolicy'], aProject.demand);
 				const project = R.mergeDeepRight(R.omit(['demand'], aProject), { demand });
-				const result = yield trello.testDemand(project);
+				const result = yield trello.testDemand(project, localConstants);
 				Should(result.status).equal(localConstants.STATUSERROR);
 			});
 		});
@@ -602,7 +602,7 @@ describe('Demand -> Trello ->', () => {
 		it('returns an error when [userData] is an empty string', () => {
 			return CO(function* () {
 				const project = R.mergeDeepRight(aProject, { demand: { userData: '' } });
-				const result = yield trello.testDemand(project);
+				const result = yield trello.testDemand(project, localConstants);
 				Should(result.status).equal(localConstants.STATUSERROR);
 			});
 		});
@@ -611,7 +611,7 @@ describe('Demand -> Trello ->', () => {
 			return CO(function* () {
 				const demand = R.omit(['userData'], aProject.demand);
 				const project = R.mergeDeepRight(R.omit(['demand'], aProject), { demand });
-				const result = yield trello.testDemand(project);
+				const result = yield trello.testDemand(project, localConstants);
 				Should(result.status).equal(localConstants.STATUSERROR);
 			});
 		});
@@ -619,7 +619,7 @@ describe('Demand -> Trello ->', () => {
 		it('returns an error when [flow] is an empty array', () => {
 			return CO(function* () {
 				const project = R.mergeDeepRight(aProject, { demand: { flow: '' } });
-				const result = yield trello.testDemand(project);
+				const result = yield trello.testDemand(project, localConstants);
 				Should(result.status).equal(localConstants.STATUSERROR);
 			});
 		});
@@ -628,7 +628,7 @@ describe('Demand -> Trello ->', () => {
 			return CO(function* () {
 				const demand = R.omit(['flow'], aProject.demand);
 				const project = R.mergeDeepRight(R.omit(['demand'], aProject), { demand });
-				const result = yield trello.testDemand(project);
+				const result = yield trello.testDemand(project, localConstants);
 				Should(result.status).equal(localConstants.STATUSERROR);
 			});
 		});
@@ -636,7 +636,7 @@ describe('Demand -> Trello ->', () => {
 		it('returns green when the request to trello is successful', () => {
 			return CO(function* () {
 				sandbox.stub(Rest, 'get').resolves();
-				const result = yield trello.testDemand(aProject);
+				const result = yield trello.testDemand(aProject, localConstants);
 				Should(result.status).equal(localConstants.STATUSOK);
 			});
     });
@@ -644,7 +644,7 @@ describe('Demand -> Trello ->', () => {
     it('returns red when the request to Jira is successful', () => {
       return CO(function* () {
         sandbox.stub(Rest, 'get').rejects({ });
-        const result = yield trello.testDemand(aProject);
+        const result = yield trello.testDemand(aProject, localConstants);
         Should(result.status).equal(localConstants.STATUSERROR);
       });
     });

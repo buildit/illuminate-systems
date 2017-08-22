@@ -8,7 +8,6 @@ const moment = require('moment');
 const utils = require('../../utils');
 const helperClasses = require('../../helperClasses');
 const Rest = require('../../restler-as-promise');
-const localConstants = require('../../constants');
 
 Log4js.configure('config/log4js_config.json', {});
 const logger = Log4js.getLogger();
@@ -101,7 +100,6 @@ function buildJQL(project, startPosition, since, constants) {
 }
 
 module.exports.loadDefects = function(defectInfo, issuesSoFar, sinceTime, errorBody, constants) {
-  const mergedConstants = R.merge(localConstants, constants);
   logger.info(`loadJiraDefects() for JIRA project ${defectInfo.project}.  Start Pos ${issuesSoFar.length}`);
 
   if (!(ValidUrl.isUri(defectInfo.url))) {
@@ -109,7 +107,7 @@ module.exports.loadDefects = function(defectInfo, issuesSoFar, sinceTime, errorB
   }
 
   return Rest.get(
-    defectInfo.url + buildJQL(defectInfo.project, issuesSoFar.length, sinceTime, mergedConstants),
+    defectInfo.url + buildJQL(defectInfo.project, issuesSoFar.length, sinceTime, constants),
     {headers: utils.createBasicAuthHeader(defectInfo.userData)}
   ).then(({ data }) => {
     logger.info(`Success reading demand from [${data.startAt}] count [${data.issues.length}] of [${data.total}]`);
@@ -134,35 +132,34 @@ module.exports.loadDefects = function(defectInfo, issuesSoFar, sinceTime, errorB
 
 
 module.exports.testDefect = function(project, constants) {
-  const mergedConstants = R.merge(localConstants, constants);
   logger.info(`testDefect() for JIRA Project ${project.name}`);
   if (!ValidUrl.isUri(project.defect.url)) {
-    return Promise.resolve({ status: mergedConstants.STATUSERROR, data: utils.validationResponseMessageFormat(`invalid defect URL [${project.defect.url}]`) });
+    return Promise.resolve({ status: constants.STATUSERROR, data: utils.validationResponseMessageFormat(`invalid defect URL [${project.defect.url}]`) });
   }
 
   if (R.isNil(project.defect.project) || R.isEmpty(project.defect.project)) {
-    return Promise.resolve({ status: mergedConstants.STATUSERROR, data: utils.validationResponseMessageFormat(`[Project] must be a valid Jira project name`) });
+    return Promise.resolve({ status: constants.STATUSERROR, data: utils.validationResponseMessageFormat(`[Project] must be a valid Jira project name`) });
   }
 
   if (R.isNil(project.defect.authPolicy) || R.isEmpty(project.defect.authPolicy)) {
-    return Promise.resolve({ status: mergedConstants.STATUSERROR, data: utils.validationResponseMessageFormat(`[Auth Policy] must be filled out`) });
+    return Promise.resolve({ status: constants.STATUSERROR, data: utils.validationResponseMessageFormat(`[Auth Policy] must be filled out`) });
   }
 
   if (R.isNil(project.defect.userData) || R.isEmpty(project.defect.userData)) {
-    return Promise.resolve({ status: mergedConstants.STATUSERROR, data: utils.validationResponseMessageFormat(`[User Data] must be filled out`) });
+    return Promise.resolve({ status: constants.STATUSERROR, data: utils.validationResponseMessageFormat(`[User Data] must be filled out`) });
   }
 
   if (R.isNil(project.defect.severity) || R.isEmpty(project.defect.severity)) {
-    return Promise.resolve({ status: mergedConstants.STATUSERROR, data: utils.validationResponseMessageFormat(`Missing [Servity] information`) });
+    return Promise.resolve({ status: constants.STATUSERROR, data: utils.validationResponseMessageFormat(`Missing [Servity] information`) });
   }
 
   return Rest.get(
-    project.defect.url + buildJQL(project.defect.project, 0, moment().format(mergedConstants.DBDATEFORMAT), mergedConstants),
+    project.defect.url + buildJQL(project.defect.project, 0, moment().format(constants.DBDATEFORMAT), constants),
     {headers: utils.createBasicAuthHeader(project.defect.userData)}
-  ).then(() => ({ status: mergedConstants.STATUSOK }))
+  ).then(() => ({ status: constants.STATUSOK }))
   .catch((error) => {
     utils.logHttpError(logger, error);
-    return ({ status: mergedConstants.STATUSERROR, data: error.data });
+    return ({ status: constants.STATUSERROR, data: error.data });
   });
 }
 

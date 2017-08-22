@@ -5,7 +5,6 @@ const R = require('ramda');
 const ValidUrl = require('valid-url');
 
 const Rest = require('../../restler-as-promise');
-const localConstants = require('../../constants');
 const helperClasses = require('../../helperClasses');
 const utils = require('../../utils');
 
@@ -28,8 +27,7 @@ function loadRawData (demandInfo, processingInfo, sinceTime, errorBody, constant
 }
 
 function loadDemand (demandInfo, sinceTime, errorBody, constants) {
-  const mergedConstants = R.merge(localConstants, constants);
-  const sinceMoment = moment(sinceTime, mergedConstants.dbDateformat);
+  const sinceMoment = moment(sinceTime, constants.DBDATEFORMAT);
   logger.info(`loadDemand() for ${type} project ${demandInfo.project}`);
 
   return Rest.get(appendAuth(`${demandInfo.url}/cards?fields=id,labels,dateLastActivity,shortUrl&actions=updateCard,createCard`, demandInfo))
@@ -82,34 +80,33 @@ function transformRawToCommon(issueData) {
 }
 
 function testDemand(project, constants) {
-  const mergedConstants = R.merge(localConstants, constants);
   logger.info(`testDemand() for JIRA Project ${project.name}`);  
 
   if (!ValidUrl.isUri(project.demand.url)) {
-    return Promise.resolve({ status: mergedConstants.STATUSERROR, data: utils.validationResponseMessageFormat(`invalid demand URL [${project.demand.url}]`) });
+    return Promise.resolve({ status: constants.STATUSERROR, data: utils.validationResponseMessageFormat(`invalid demand URL [${project.demand.url}]`) });
   }
 
   if (R.isNil(project.demand.project) || R.isEmpty(project.demand.project)) {
-    return Promise.resolve({ status: mergedConstants.STATUSERROR, data: utils.validationResponseMessageFormat(`[Project] must be a valid Jira project name`) });
+    return Promise.resolve({ status: constants.STATUSERROR, data: utils.validationResponseMessageFormat(`[Project] must be a valid Jira project name`) });
   }
 
   if (R.isNil(project.demand.authPolicy) || R.isEmpty(project.demand.authPolicy)) {
-    return Promise.resolve({ status: mergedConstants.STATUSERROR, data: utils.validationResponseMessageFormat(`[Auth Policy] must be filled out`) });
+    return Promise.resolve({ status: constants.STATUSERROR, data: utils.validationResponseMessageFormat(`[Auth Policy] must be filled out`) });
   }
 
   if (R.isNil(project.demand.userData) || R.isEmpty(project.demand.userData)) {
-    return Promise.resolve({ status: mergedConstants.STATUSERROR, data: utils.validationResponseMessageFormat(`[User Data] must be filled out`) });
+    return Promise.resolve({ status: constants.STATUSERROR, data: utils.validationResponseMessageFormat(`[User Data] must be filled out`) });
   }
 
   if (R.isNil(project.demand.flow) || R.isEmpty(project.demand.flow)) {
-    return Promise.resolve({ status: mergedConstants.STATUSERROR, data: utils.validationResponseMessageFormat(`Missing [Flow] information`) });
+    return Promise.resolve({ status: constants.STATUSERROR, data: utils.validationResponseMessageFormat(`Missing [Flow] information`) });
   }
 
   return Rest.get(appendAuth(`${project.demand.url}/cards?fields=id&limit=1`, project.demand))
-  .then(() => ({ status: mergedConstants.STATUSOK }))
+  .then(() => ({ status: constants.STATUSOK }))
   .catch((error) => {
     utils.logHttpError(logger, error);
-    return ({ status: mergedConstants.STATUSERROR, data: error.data });
+    return ({ status: constants.STATUSERROR, data: error.data });
   });
 }
 

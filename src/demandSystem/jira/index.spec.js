@@ -573,7 +573,7 @@ describe('Demand -> Jira ->', () => {
   
     it('Test Getting an empty set of Jira Issues', function() {
       Rest.get.resolves({ data: EMPTYJIRARESPONSE, response: jiraResponse });
-      return jira.loadDemand(DEMANDINFO, [], SINCETIME, errorBody)
+      return jira.loadDemand(DEMANDINFO, [], SINCETIME, errorBody, localConstants)
       .then(function(response) {
         Should(response.length).equal(0);
       });
@@ -595,7 +595,7 @@ describe('Demand -> Jira ->', () => {
     it('Test Getting an single set of Jira Issues', function() {
       Rest.get.resolves({ data: SINGLEJIRARESPOSE, response: jiraResponse })
   
-      return jira.loadDemand(DEMANDINFO, [], SINCETIME, errorBody)
+      return jira.loadDemand(DEMANDINFO, [], SINCETIME, errorBody, localConstants)
       .then(function(response) {
         Should(response.length).equal(1);
       });
@@ -606,7 +606,7 @@ describe('Demand -> Jira ->', () => {
     var aSetOfInfo = {};
   
     beforeEach(function() {
-      this.loadDemand = Sinon.stub(jira, 'loadDemand').rejects(ERRORRESULT);
+      Sinon.stub(jira, 'loadDemand').rejects(ERRORRESULT);
     });
   
     afterEach(function() {
@@ -647,7 +647,7 @@ describe('Demand -> Jira ->', () => {
     it('returns an error when the url is invalid.', () => {
       return CO(function* () {
         const project = R.mergeDeepRight(aProject, { demand: { url: 'invalid url' } });
-        const result = yield jira.testDemand(project);
+        const result = yield jira.testDemand(project, localConstants);
         Should(result.status).equal(localConstants.STATUSERROR);
       });
     });
@@ -655,7 +655,7 @@ describe('Demand -> Jira ->', () => {
     it('returns an error when the jira [project] is an empty string', () => {
       return CO(function* () {
         const project = R.mergeDeepRight(aProject, { demand: { project: '' } });
-        const result = yield jira.testDemand(project);
+        const result = yield jira.testDemand(project, localConstants);
         Should(result.status).equal(localConstants.STATUSERROR);
       });
     });
@@ -664,7 +664,7 @@ describe('Demand -> Jira ->', () => {
       return CO(function* () {
         const demand = R.omit(['project'], aProject.demand);
         const project = R.mergeDeepRight(R.omit(['demand'], aProject), { demand });
-        const result = yield jira.testDemand(project);
+        const result = yield jira.testDemand(project, localConstants);
         Should(result.status).equal(localConstants.STATUSERROR);
       });
     });
@@ -672,7 +672,7 @@ describe('Demand -> Jira ->', () => {
     it('returns an error when [authPolicy] is an empty string', () => {
       return CO(function* () {
         const project = R.mergeDeepRight(aProject, { demand: { authPolicy: '' } });
-        const result = yield jira.testDemand(project);
+        const result = yield jira.testDemand(project, localConstants);
         Should(result.status).equal(localConstants.STATUSERROR);
       });
     });
@@ -681,7 +681,7 @@ describe('Demand -> Jira ->', () => {
       return CO(function* () {
         const demand = R.omit(['authPolicy'], aProject.demand);
         const project = R.mergeDeepRight(R.omit(['demand'], aProject), { demand });
-        const result = yield jira.testDemand(project);
+        const result = yield jira.testDemand(project, localConstants);
         Should(result.status).equal(localConstants.STATUSERROR);
       });
     });
@@ -689,7 +689,7 @@ describe('Demand -> Jira ->', () => {
     it('returns an error when [userData] is an empty string', () => {
       return CO(function* () {
         const project = R.mergeDeepRight(aProject, { demand: { userData: '' } });
-        const result = yield jira.testDemand(project);
+        const result = yield jira.testDemand(project, localConstants);
         Should(result.status).equal(localConstants.STATUSERROR);
       });
     });
@@ -698,7 +698,7 @@ describe('Demand -> Jira ->', () => {
       return CO(function* () {
         const demand = R.omit(['userData'], aProject.demand);
         const project = R.mergeDeepRight(R.omit(['demand'], aProject), { demand });
-        const result = yield jira.testDemand(project);
+        const result = yield jira.testDemand(project, localConstants);
         Should(result.status).equal(localConstants.STATUSERROR);
       });
     });
@@ -706,7 +706,7 @@ describe('Demand -> Jira ->', () => {
     it('returns an error when [flow] is an empty array', () => {
       return CO(function* () {
         const project = R.mergeDeepRight(aProject, { demand: { flow: '' } });
-        const result = yield jira.testDemand(project);
+        const result = yield jira.testDemand(project, localConstants);
         Should(result.status).equal(localConstants.STATUSERROR);
       });
     });
@@ -715,7 +715,7 @@ describe('Demand -> Jira ->', () => {
       return CO(function* () {
         const demand = R.omit(['flow'], aProject.demand);
         const project = R.mergeDeepRight(R.omit(['demand'], aProject), { demand });
-        const result = yield jira.testDemand(project);
+        const result = yield jira.testDemand(project, localConstants);
         Should(result.status).equal(localConstants.STATUSERROR);
       });
     });
@@ -723,7 +723,7 @@ describe('Demand -> Jira ->', () => {
     it('returns green when the request to Jira is successful', () => {
       return CO(function* () {
         sandbox.stub(Rest, 'get').resolves();
-        const result = yield jira.testDemand(aProject);
+        const result = yield jira.testDemand(aProject, localConstants);
         Should(result.status).equal(localConstants.STATUSOK);
       });
     });
@@ -731,7 +731,7 @@ describe('Demand -> Jira ->', () => {
     it('returns red when the request to Jira is successful', () => {
       return CO(function* () {
         sandbox.stub(Rest, 'get').rejects({ });
-        const result = yield jira.testDemand(aProject);
+        const result = yield jira.testDemand(aProject, localConstants);
         Should(result.status).equal(localConstants.STATUSERROR);
       });
     });
