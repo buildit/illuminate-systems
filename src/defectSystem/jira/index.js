@@ -4,6 +4,7 @@ const Log4js = require('log4js');
 const R = require('ramda');
 const ValidUrl = require('valid-url');
 const moment = require('moment');
+const localConstants = require('../../constants');
 
 const utils = require('../../utils');
 const helperClasses = require('../../helperClasses');
@@ -15,11 +16,11 @@ logger.let = Config.get('log-level');
 
 
 
-module.exports.loadRawData = function(defectInfo, processingInfo, sinceTime, errorBody, constants) {
+module.exports.loadRawData = function(defectInfo, processingInfo, sinceTime, errorBody) {
   logger.info(`loadBugEntries for ${defectInfo.project} updated since [${sinceTime}]`);
 
   return new Promise(function (resolve, reject) {
-    module.exports.loadDefects(defectInfo, [], sinceTime, errorBody, constants)
+    module.exports.loadDefects(defectInfo, [], sinceTime, errorBody)
     .then( function (stories) {
       logger.debug(`total stories read - ${stories.length}`);
       if (stories.length < 1) {
@@ -89,17 +90,17 @@ module.exports.transformRawToCommon = function(issueData, systemInformation) {
   return commonDataFormat;
 }
 
-function buildJQL(project, startPosition, since, constants) {
+function buildJQL(project, startPosition, since) {
   const expand = ['changelog', 'history', 'items'];
   const fields = ['issuetype', 'created', 'updated', 'status', 'key', 'summary'];
-  const jqlData = `search?jql=project=${project} AND issueType=${constants.JIRADEFECTTYPE} AND updated>=${since}`;
+  const jqlData = `search?jql=project=${project} AND issueType=${localConstants.JIRADEFECTTYPE} AND updated>=${since}`;
   const queryString = `${jqlData}&startAt=${startPosition}&expand=${expand.toString()}&fields=${fields.toString()}`;
 
   logger.debug(`queryString:[${queryString}]`);
   return queryString;
 }
 
-module.exports.loadDefects = function(defectInfo, issuesSoFar, sinceTime, errorBody, constants) {
+module.exports.loadDefects = function(defectInfo, issuesSoFar, sinceTime, errorBody) {
   logger.info(`loadJiraDefects() for JIRA project ${defectInfo.project}.  Start Pos ${issuesSoFar.length}`);
 
   if (!(ValidUrl.isUri(defectInfo.url))) {
@@ -107,7 +108,7 @@ module.exports.loadDefects = function(defectInfo, issuesSoFar, sinceTime, errorB
   }
 
   return Rest.get(
-    defectInfo.url + buildJQL(defectInfo.project, issuesSoFar.length, sinceTime, constants),
+    defectInfo.url + buildJQL(defectInfo.project, issuesSoFar.length, sinceTime),
     {headers: utils.createBasicAuthHeader(defectInfo.userData)}
   ).then(({ data }) => {
     logger.info(`Success reading demand from [${data.startAt}] count [${data.issues.length}] of [${data.total}]`);
@@ -154,7 +155,7 @@ module.exports.testDefect = function(project, constants) {
   }
 
   return Rest.get(
-    project.defect.url + buildJQL(project.defect.project, 0, moment().format(constants.DBDATEFORMAT), constants),
+    project.defect.url + buildJQL(project.defect.project, 0, moment().format('YYYY-MM-DD')),
     {headers: utils.createBasicAuthHeader(project.defect.userData)}
   ).then(() => ({ status: constants.STATUSOK }))
   .catch((error) => {

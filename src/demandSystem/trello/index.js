@@ -4,6 +4,7 @@ const Log4js = require('log4js');
 const R = require('ramda');
 const ValidUrl = require('valid-url');
 
+const localConstants = require('../../constants');
 const Rest = require('../../restler-as-promise');
 const helperClasses = require('../../helperClasses');
 const utils = require('../../utils');
@@ -14,9 +15,9 @@ logger.level = Config.get('log-level');
 
 const type = 'TRELLO'
 
-function loadRawData (demandInfo, processingInfo, sinceTime, errorBody, constants) {
+function loadRawData (demandInfo, processingInfo, sinceTime, errorBody) {
   logger.info(`loadStoryEntries(${type}) for ${demandInfo.project} updated since [${sinceTime}]`);
-  return module.exports.loadDemand(demandInfo, sinceTime, errorBody, constants)
+  return module.exports.loadDemand(demandInfo, sinceTime, errorBody)
   .then(stories => {
     logger.debug(`total stories read - ${stories.length}`);
     if (stories.length < 1) {
@@ -26,8 +27,8 @@ function loadRawData (demandInfo, processingInfo, sinceTime, errorBody, constant
   });
 }
 
-function loadDemand (demandInfo, sinceTime, errorBody, constants) {
-  const sinceMoment = moment(sinceTime, constants.DBDATEFORMAT);
+function loadDemand (demandInfo, sinceTime, errorBody) {
+  const sinceMoment = moment(sinceTime, localConstants.DBDATEFORMAT);
   logger.info(`loadDemand() for ${type} project ${demandInfo.project}`);
 
   return Rest.get(appendAuth(`${demandInfo.url}/cards?fields=id,labels,dateLastActivity,shortUrl&actions=updateCard,createCard`, demandInfo))

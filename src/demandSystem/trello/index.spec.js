@@ -428,7 +428,7 @@ describe('Demand -> Trello ->', () => {
 
     it('stores the data if there is at least one story', () => {
       sandbox.stub(trello, 'loadDemand').resolves([{ some: 'raw' }, { ugly: 'data' }]);
-      return trello.loadRawData(DEMANDINFO, R.merge(processingInfo, { storageFunction }), '2017-08-09', null, localConstants)
+      return trello.loadRawData(DEMANDINFO, R.merge(processingInfo, { storageFunction }), '2017-08-09', null)
       .then(() => {
         Should(storageFunction.callCount).match(1);
       });
@@ -436,7 +436,7 @@ describe('Demand -> Trello ->', () => {
 
     it('stores nothing if there are no stories', () => {
       sandbox.stub(trello, 'loadDemand').resolves([]);
-      return trello.loadRawData(DEMANDINFO, R.merge(processingInfo, { storageFunction }), '2017-08-09', null, localConstants)
+      return trello.loadRawData(DEMANDINFO, R.merge(processingInfo, { storageFunction }), '2017-08-09', null)
       .then(() => {
         Should(storageFunction.callCount).match(0);
       });
@@ -456,35 +456,35 @@ describe('Demand -> Trello ->', () => {
     });
 
     it('filters out cards that do not have any actions', () => {
-      return trello.loadDemand(DEMANDINFO, '2000-01-01', null, localConstants)
+      return trello.loadDemand(DEMANDINFO, '2000-01-01', null)
       .then((data) => {
         Should(data.every(d => d.id !== idKeys.storyWithoutActions)).be.true();
       });
     });
 
     it('filters out cards that happen before the sinceTime variable', () => {
-      return trello.loadDemand(DEMANDINFO, '2017-07-01', null, localConstants)
+      return trello.loadDemand(DEMANDINFO, '2017-07-01', null)
       .then((data) => {
         Should(data.every(d => d.id !== idKeys.earlierStoryWithActions)).be.true();
       });
     });
 
     it('adds the _id and creationDate to all of the stories', () => {
-      return trello.loadDemand(DEMANDINFO, '2017-07-01', null, localConstants)
+      return trello.loadDemand(DEMANDINFO, '2017-07-01', null)
       .then((data) => {
         Should(data.every(d => d._id && d.creationDate)).be.true();
       });
     });
 
     it('adds the correct id to stories', () => {
-      return trello.loadDemand(DEMANDINFO, '2017-07-01', null, localConstants)
+      return trello.loadDemand(DEMANDINFO, '2017-07-01', null)
       .then((data) => {
         Should(data[0]._id).equal(idKeys.storyWithMultipleActions);
       });
     });
 
     it('adds the correct creationDate to stories', () => {
-      return trello.loadDemand(DEMANDINFO, '2017-07-01', null, localConstants)
+      return trello.loadDemand(DEMANDINFO, '2017-07-01', null)
       .then((data) => {
         Should(data[0].creationDate).equal('2017-08-07T21:45:23.000Z');
       });
@@ -499,7 +499,7 @@ describe('Demand -> Trello ->', () => {
 			}
 			Rest.get.restore();
 			sandbox.stub(Rest, 'get').rejects({ data: RAWTRELLOSTORY, response: { statusCode: HttpStatus.NOT_FOUND } });
-			return trello.loadDemand(DEMANDINFO, '2017-07-01', errorBody, localConstants)
+			return trello.loadDemand(DEMANDINFO, '2017-07-01', errorBody)
 			.catch(error => {
 				Should(error.statusCode).equal(HttpStatus.NOT_FOUND);
 			})
@@ -514,7 +514,7 @@ describe('Demand -> Trello ->', () => {
 			}
 			Rest.get.restore();
 			sandbox.stub(Rest, 'get').rejects(new Error('random error'));
-			return trello.loadDemand(DEMANDINFO, '2017-07-01', errorBody, localConstants)
+			return trello.loadDemand(DEMANDINFO, '2017-07-01', errorBody)
 			.catch(error => {
 				Should(error.message).equal('random error');
 			});
@@ -528,7 +528,7 @@ describe('Demand -> Trello ->', () => {
     before(() => {
       sandbox.stub(Rest, 'get').resolves({ data: RAWTRELLOSTORY, response: { statusCode: HttpStatus.OK } });
 
-      return trello.loadDemand(DEMANDINFO, '2017-07-01', null, localConstants)
+      return trello.loadDemand(DEMANDINFO, '2017-07-01', null)
       .then(raw => rawData = raw);
     });
 

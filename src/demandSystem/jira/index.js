@@ -6,6 +6,7 @@ const ValidUrl = require('valid-url');
 const moment = require('moment');
 
 const utils = require('../../utils')
+const localConstants = require('../../constants');
 const helperClasses = require('../../helperClasses');
 const Rest = require('../../restler-as-promise');
 
@@ -13,11 +14,11 @@ Log4js.configure('config/log4js_config.json', {});
 const logger = Log4js.getLogger();
 logger.level = Config.get('log-level');
 
-module.exports.loadRawData = function(demandInfo, processingInfo, sinceTime, errorBody, constants) {
+module.exports.loadRawData = function(demandInfo, processingInfo, sinceTime, errorBody) {
   logger.info(`loadStoryEntries for ${demandInfo.project} updated since [${sinceTime}]`);
 
   return new Promise(function (resolve, reject) {
-    module.exports.loadDemand(demandInfo, [], sinceTime, errorBody, constants)
+    module.exports.loadDemand(demandInfo, [], sinceTime, errorBody)
     .then( function (stories) {
       logger.debug(`total stories read - ${stories.length}`);
       if (stories.length < 1) {
@@ -81,7 +82,7 @@ module.exports.transformRawToCommon = function(issueData, systemInformation) {
   return commonDataFormat;
 }
 
-module.exports.loadDemand = function(demandInfo, issuesSoFar, sinceTime, errorBody, constants) {
+module.exports.loadDemand = function(demandInfo, issuesSoFar, sinceTime, errorBody) {
   logger.info(`loadDemand() for JIRA project ${demandInfo.project}.  Start Pos ${issuesSoFar.length}`);
 
   if (!(ValidUrl.isUri(demandInfo.url))) {
@@ -89,13 +90,13 @@ module.exports.loadDemand = function(demandInfo, issuesSoFar, sinceTime, errorBo
   }
 
   return Rest.get(
-    demandInfo.url + buildJQL(demandInfo.project, issuesSoFar.length, sinceTime, constants),
+    demandInfo.url + buildJQL(demandInfo.project, issuesSoFar.length, sinceTime),
     {headers: utils.createBasicAuthHeader(demandInfo.userData)}
   ).then(({ data }) => {
     logger.info(`Success reading demand from [${data.startAt}] count [${data.issues.length}] of [${data.total}]`);
     var issues = issuesSoFar.concat(data.issues);
     if ((data.issues && data.issues.length > 0) && (issues.length < data.total)) {
-      module.exports.loadDemand(demandInfo, issues, sinceTime, errorBody, constants)
+      module.exports.loadDemand(demandInfo, issues, sinceTime, errorBody)
       .then( function(issues) {  // unwind the promise chain
         return issues;
       })
@@ -134,7 +135,7 @@ module.exports.testDemand = function(project, constants) {
   }
 
   return Rest.get(
-    project.demand.url + buildJQL(project.demand.project, 0, moment().format(constants.DBDATEFORMAT), constants),
+    project.demand.url + buildJQL(project.demand.project, 0, moment().format('YYYY-MM-DD'), constants),
     {headers: utils.createBasicAuthHeader(project.demand.userData)}
   ).then(() => ({ status: constants.STATUSOK }))
   .catch((error) => {
@@ -162,10 +163,10 @@ module.exports.fixHistoryData = function(stories) {
   return(stories);
 }
 
-function buildJQL(project, startPosition, since, constants) {
+function buildJQL(project, startPosition, since) {
   const expand = ['changelog', 'history', 'items'];
   const fields = ['issuetype', 'created', 'updated', 'status', 'key', 'summary'];
-  const jqlData = `search?jql=project=${project} AND issueType=${constants.JIRADEMANDTYPE} AND updated>=${since}`;
+  const jqlData = `search?jql=project=${project} AND issueType=${localConstants.JIRADEMANDTYPE} AND updated>=${since}`;
   const queryString = `${jqlData}&startAt=${startPosition}&expand=${expand.toString()}&fields=${fields.toString()}`;
 
   logger.debug(`queryString:[${queryString}]`);

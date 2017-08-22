@@ -573,7 +573,7 @@ describe('Demand -> Jira ->', () => {
   
     it('Test Getting an empty set of Jira Issues', function() {
       Rest.get.resolves({ data: EMPTYJIRARESPONSE, response: jiraResponse });
-      return jira.loadDemand(DEMANDINFO, [], SINCETIME, errorBody, localConstants)
+      return jira.loadDemand(DEMANDINFO, [], SINCETIME, errorBody)
       .then(function(response) {
         Should(response.length).equal(0);
       });
@@ -595,7 +595,7 @@ describe('Demand -> Jira ->', () => {
     it('Test Getting an single set of Jira Issues', function() {
       Rest.get.resolves({ data: SINGLEJIRARESPOSE, response: jiraResponse })
   
-      return jira.loadDemand(DEMANDINFO, [], SINCETIME, errorBody, localConstants)
+      return jira.loadDemand(DEMANDINFO, [], SINCETIME, errorBody)
       .then(function(response) {
         Should(response.length).equal(1);
       });

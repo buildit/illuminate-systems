@@ -183,7 +183,7 @@ describe('Effort -> Harvest ->', () => {
     it('Test Get Time Entries', function() {
       Rest.get.resolves({ data: TIMERESPONSE, response: null });
   
-      return harvest.getTimeEntries(EFFORTINFO, SINCETIME, errorBody, localConstants)
+      return harvest.getTimeEntries(EFFORTINFO, SINCETIME, errorBody)
         .then(function(response) {
           Should(response.length).be.above(0);
           Should(response[0].day_entry).have.property('spent_at');
@@ -194,7 +194,7 @@ describe('Effort -> Harvest ->', () => {
     it('Test Getting an empty set Time Entries', function() {
       Rest.get.resolves({ data: [], response: null })
   
-      return harvest.getTimeEntries(EFFORTINFO, null, errorBody, localConstants)
+      return harvest.getTimeEntries(EFFORTINFO, null, errorBody)
         .then(function(response) {
           Should(response.length).equal(0);
         });
@@ -205,7 +205,7 @@ describe('Effort -> Harvest ->', () => {
   
       var badEffort = JSON.parse(JSON.stringify(EFFORTINFO));
       badEffort.project = BADPROJECT;
-      return harvest.getTimeEntries(badEffort, SINCETIME, errorBody, localConstants)
+      return harvest.getTimeEntries(badEffort, SINCETIME, errorBody)
         .catch((response) => {
           Should(response).not.be.null;
           Should(response.statusCode).equal(CODENOTFOUND);

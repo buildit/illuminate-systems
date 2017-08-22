@@ -5,6 +5,7 @@ const moment = require('moment');
 const ValidUrl = require('valid-url');
 
 const Rest = require('../../restler-as-promise');
+const localConstants = require('../../constants');
 const utils = require('../../utils');
 
 Log4js.configure('config/log4js_config.json', {});
@@ -16,13 +17,13 @@ logger.level = Config.get('log-level');
 //const MILLENIUM = '2000-01-01';
 //const DEFAULTSTARTDATE = MILLENIUM+'+00:00';
 
-exports.loadRawData = function(effortInfo, processingInfo, sinceTime, errorBody, constants) {
+exports.loadRawData = function(effortInfo, processingInfo, sinceTime, errorBody) {
   logger.info(`loadRawData for ${effortInfo.project} updated since [${sinceTime}]`);
   logger.debug(`processing Instructions`);
   logger.debug(processingInfo);
 
   return new Promise(function (resolve, reject) {
-    module.exports.getTimeEntries(effortInfo, sinceTime, errorBody, constants)
+    module.exports.getTimeEntries(effortInfo, sinceTime, errorBody)
       .then(function (timeData) {
         if (timeData.length < 1) {
           resolve(timeData);
@@ -59,10 +60,10 @@ exports.transformRawToCommon = function(timeData) {
   return R.map(makeCommon, timeData);
 }
 
-exports.getTimeEntries = function(effortInfo, startDate, errorBody, constants) {
+exports.getTimeEntries = function(effortInfo, startDate, errorBody) {
   logger.info(`getTimeEntries since ${startDate}`);
 
-  var harvestURL = `${effortInfo.url}/projects/${effortInfo.project}/entries?from=${constants.DEFAULTSTARTDATE}&to=${dateFormatIWant()}&updated_since=${startDate}+00:00`;
+  var harvestURL = `${effortInfo.url}/projects/${effortInfo.project}/entries?from=${localConstants.DEFAULTSTARTDATE}&to=${dateFormatIWant()}&updated_since=${startDate}+00:00`;
   logger.debug(`getTimeEntries->harvestURL ${harvestURL}`);
   return Rest.get(
     encodeURI(harvestURL),
@@ -142,7 +143,7 @@ exports.testEffort = function(project, constants) {
     return Promise.resolve({ status: constants.STATUSERROR, data: utils.validationResponseMessageFormat(`Missing [Role] information`) });
   }
   
-  var harvestURL = `${project.effort.url}/projects/${project.effort.project}/entries?from=${constants.DEFAULTSTARTDATE}&to=${dateFormatIWant()}&updated_since=${moment().toISOString()}`;
+  var harvestURL = `${project.effort.url}/projects/${project.effort.project}/entries?from=${localConstants.DEFAULTSTARTDATE}&to=${dateFormatIWant()}&updated_since=${moment().toISOString()}`;
   
   return Rest.get(
     encodeURI(harvestURL),
@@ -155,5 +156,5 @@ exports.testEffort = function(project, constants) {
 }
 
 function dateFormatIWant() {
-  moment.utc().format('YYYY-MM-DD');
+  return moment.utc().format('YYYY-MM-DD');
 }

@@ -216,7 +216,7 @@ describe('Defect -> Jira ->', () => {
     it('Test Getting an empty set of Jira Defects', function() {
       Rest.get.resolves({ data: EMPTYJIRARESPONSE, response: jiraResponse });
   
-      return jira.loadDefects(DEFECTINFO, [], null, null, localConstants)
+      return jira.loadDefects(DEFECTINFO, [], null, null)
         .then(function(response) {
           Should(response.length).equal(0);
         });
@@ -238,7 +238,7 @@ describe('Defect -> Jira ->', () => {
     it('Test Getting an empty set of Jira defects', function() {
       Rest.get.resolves({ data: SINGLEJIRARESPOSE, response: jiraResponse });
   
-      return jira.loadDefects(DEFECTINFO, [], null, null, localConstants)
+      return jira.loadDefects(DEFECTINFO, [], null, null)
         .then(function(response) {
           Should(response.length).equal(1);
         });
