@@ -1,5 +1,4 @@
 
-
 module.exports.createBasicAuthHeader = function(encodedUser) {
   var headers = {
     'Authorization': 'Basic ' +  encodedUser,
@@ -8,7 +7,7 @@ module.exports.createBasicAuthHeader = function(encodedUser) {
   return headers;
 }
 
-module.exports.validationReponseMessageFormat = function(message) {
+module.exports.validationResponseMessageFormat = function(message) {
   return {
     message,
   };

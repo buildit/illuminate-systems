@@ -86,23 +86,23 @@ function testDemand(project, constants) {
   logger.info(`testDemand() for JIRA Project ${project.name}`);  
 
   if (!ValidUrl.isUri(project.demand.url)) {
-    return Promise.resolve({ status: mergedConstants.STATUSERROR, data: utils.validationReponseMessageFormat(`invalid demand URL [${project.demand.url}]`) });
+    return Promise.resolve({ status: mergedConstants.STATUSERROR, data: utils.validationResponseMessageFormat(`invalid demand URL [${project.demand.url}]`) });
   }
 
   if (R.isNil(project.demand.project) || R.isEmpty(project.demand.project)) {
-    return Promise.resolve({ status: mergedConstants.STATUSERROR, data: utils.validationReponseMessageFormat(`[Project] must be a valid Jira project name`) });
+    return Promise.resolve({ status: mergedConstants.STATUSERROR, data: utils.validationResponseMessageFormat(`[Project] must be a valid Jira project name`) });
   }
 
   if (R.isNil(project.demand.authPolicy) || R.isEmpty(project.demand.authPolicy)) {
-    return Promise.resolve({ status: mergedConstants.STATUSERROR, data: utils.validationReponseMessageFormat(`[Auth Policy] must be filled out`) });
+    return Promise.resolve({ status: mergedConstants.STATUSERROR, data: utils.validationResponseMessageFormat(`[Auth Policy] must be filled out`) });
   }
 
   if (R.isNil(project.demand.userData) || R.isEmpty(project.demand.userData)) {
-    return Promise.resolve({ status: mergedConstants.STATUSERROR, data: utils.validationReponseMessageFormat(`[User Data] must be filled out`) });
+    return Promise.resolve({ status: mergedConstants.STATUSERROR, data: utils.validationResponseMessageFormat(`[User Data] must be filled out`) });
   }
 
   if (R.isNil(project.demand.flow) || R.isEmpty(project.demand.flow)) {
-    return Promise.resolve({ status: mergedConstants.STATUSERROR, data: utils.validationReponseMessageFormat(`Missing [Flow] information`) });
+    return Promise.resolve({ status: mergedConstants.STATUSERROR, data: utils.validationResponseMessageFormat(`Missing [Flow] information`) });
   }
 
   return Rest.get(appendAuth(`${project.demand.url}/cards?fields=id&limit=1`, project.demand))

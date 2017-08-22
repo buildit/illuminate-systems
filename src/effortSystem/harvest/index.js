@@ -126,23 +126,23 @@ exports.testEffort = function(project, constants) {
   logger.debug(`Harvest -> testEffort() for ${project.name}`);
   if (!ValidUrl.isUri(project.effort.url)) {
     logger.debug(`ERROR, invalid url: ${project.effort.url} on project ${project.name}`)
-    return Promise.resolve({ status: mergedConstants.STATUSERROR, data: utils.validationReponseMessageFormat(`invalid effort URL [${project.effort.url}])`) });
+    return Promise.resolve({ status: mergedConstants.STATUSERROR, data: utils.validationResponseMessageFormat(`invalid effort URL [${project.effort.url}])`) });
   }
   
   if (R.isNil(project.effort.project) || R.isEmpty(project.effort.project)) {
-    return Promise.resolve({ status: mergedConstants.STATUSERROR, data: utils.validationReponseMessageFormat(`[Project] must be a valid Harvest project name`) });
+    return Promise.resolve({ status: mergedConstants.STATUSERROR, data: utils.validationResponseMessageFormat(`[Project] must be a valid Harvest project name`) });
   }
   
   if (R.isNil(project.effort.authPolicy) || R.isEmpty(project.effort.authPolicy)) {
-    return Promise.resolve({ status: mergedConstants.STATUSERROR, data: utils.validationReponseMessageFormat(`[Auth Policy] must be filled out`) });
+    return Promise.resolve({ status: mergedConstants.STATUSERROR, data: utils.validationResponseMessageFormat(`[Auth Policy] must be filled out`) });
   }
   
   if (R.isNil(project.effort.userData) || R.isEmpty(project.effort.userData)) {
-    return Promise.resolve({ status: mergedConstants.STATUSERROR, data: utils.validationReponseMessageFormat(`[User Data] must be filled out`) });
+    return Promise.resolve({ status: mergedConstants.STATUSERROR, data: utils.validationResponseMessageFormat(`[User Data] must be filled out`) });
   }
   
   if (R.isNil(project.effort.role) || R.isEmpty(project.effort.role)) {
-    return Promise.resolve({ status: mergedConstants.STATUSERROR, data: utils.validationReponseMessageFormat(`Missing [Role] information`) });
+    return Promise.resolve({ status: mergedConstants.STATUSERROR, data: utils.validationResponseMessageFormat(`Missing [Role] information`) });
   }
   
   var harvestURL = `${project.effort.url}/projects/${project.effort.project}/entries?from=${mergedConstants.DEFAULTSTARTDATE}&to=${dateFormatIWant()}&updated_since=${moment().toISOString()}`;
