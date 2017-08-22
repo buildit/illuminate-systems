@@ -17,13 +17,13 @@ logger.level = Config.get('log-level');
 //const MILLENIUM = '2000-01-01';
 //const DEFAULTSTARTDATE = MILLENIUM+'+00:00';
 
-exports.loadRawData = function(effortInfo, processingInfo, sinceTime, errorBody) {
+exports.loadRawData = function(effortInfo, processingInfo, sinceTime, errorBody, constants) {
   logger.info(`loadRawData for ${effortInfo.project} updated since [${sinceTime}]`);
   logger.debug(`processing Instructions`);
   logger.debug(processingInfo);
 
   return new Promise(function (resolve, reject) {
-    module.exports.getTimeEntries(effortInfo, sinceTime, errorBody)
+    module.exports.getTimeEntries(effortInfo, sinceTime, errorBody, constants)
       .then(function (timeData) {
         if (timeData.length < 1) {
           resolve(timeData);

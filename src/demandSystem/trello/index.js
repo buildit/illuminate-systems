@@ -15,9 +15,9 @@ logger.level = Config.get('log-level');
 
 const type = 'TRELLO'
 
-function loadRawData (demandInfo, processingInfo, sinceTime, errorBody) {
+function loadRawData (demandInfo, processingInfo, sinceTime, errorBody, constants) {
   logger.info(`loadStoryEntries(${type}) for ${demandInfo.project} updated since [${sinceTime}]`);
-  return module.exports.loadDemand(demandInfo, sinceTime, errorBody)
+  return module.exports.loadDemand(demandInfo, sinceTime, errorBody, constants)
   .then(stories => {
     logger.debug(`total stories read - ${stories.length}`);
     if (stories.length < 1) {

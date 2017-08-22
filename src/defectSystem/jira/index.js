@@ -16,11 +16,11 @@ logger.let = Config.get('log-level');
 
 
 
-module.exports.loadRawData = function(defectInfo, processingInfo, sinceTime, errorBody) {
+module.exports.loadRawData = function(defectInfo, processingInfo, sinceTime, errorBody, constants) {
   logger.info(`loadBugEntries for ${defectInfo.project} updated since [${sinceTime}]`);
 
   return new Promise(function (resolve, reject) {
-    module.exports.loadDefects(defectInfo, [], sinceTime, errorBody)
+    module.exports.loadDefects(defectInfo, [], sinceTime, errorBody, constants)
     .then( function (stories) {
       logger.debug(`total stories read - ${stories.length}`);
       if (stories.length < 1) {
