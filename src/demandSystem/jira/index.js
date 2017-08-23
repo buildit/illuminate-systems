@@ -14,18 +14,27 @@ Log4js.configure('config/log4js_config.json', {});
 const logger = Log4js.getLogger();
 logger.level = Config.get('log-level');
 
-module.exports.loadRawData = function(demandInfo, processingInfo, sinceTime, errorBody) {
+/**
+ * 
+ * 
+ * @param {any} demandInfo The demand section of a project from the datastore.
+ * @param {any} processingInfo { dbUrl: string, rawLocation (collectionName): string, storageFunction: fn to post data to db }
+ * @param {any} sinceTime start of the Defect 
+ * @param {any} errorBody function to transform errors into a common format.
+ * @returns Promise with the raw data.
+ */
+function loadRawData(demandInfo, processingInfo, sinceTime, errorBody) {
   logger.info(`loadStoryEntries for ${demandInfo.project} updated since [${sinceTime}]`);
 
   return new Promise(function (resolve, reject) {
-    module.exports.loadDemand(demandInfo, [], sinceTime, errorBody)
+    _loadDemand(demandInfo, [], sinceTime, errorBody)
     .then( function (stories) {
       logger.debug(`total stories read - ${stories.length}`);
       if (stories.length < 1) {
         resolve(stories);
       }
 
-      var enhancedStories = module.exports.fixHistoryData(stories);
+      var enhancedStories = _fixHistoryData(stories);
       processingInfo.storageFunction(processingInfo.dbUrl, processingInfo.rawLocation, enhancedStories)
       .then (function (allRawData) {
         resolve(allRawData);
@@ -41,7 +50,7 @@ module.exports.loadRawData = function(demandInfo, processingInfo, sinceTime, err
   });
 }
 
-module.exports.transformRawToCommon = function(issueData, systemInformation) {
+function transformRawToCommon(issueData, systemInformation) {
   logger.info('mapJiraDemand into a common format');
 
   var commonDataFormat = [];
@@ -82,37 +91,7 @@ module.exports.transformRawToCommon = function(issueData, systemInformation) {
   return commonDataFormat;
 }
 
-module.exports.loadDemand = function(demandInfo, issuesSoFar, sinceTime, errorBody) {
-  logger.info(`loadDemand() for JIRA project ${demandInfo.project}.  Start Pos ${issuesSoFar.length}`);
-
-  if (!(ValidUrl.isUri(demandInfo.url))) {
-    return Promise.reject(errorBody(HttpStatus.BAD_REQUEST, `invalid demand URL [${demandInfo.url}]`));
-  }
-
-  return Rest.get(
-    demandInfo.url + buildJQL(demandInfo.project, issuesSoFar.length, sinceTime),
-    {headers: utils.createBasicAuthHeader(demandInfo.userData)}
-  ).then(({ data }) => {
-    logger.info(`Success reading demand from [${data.startAt}] count [${data.issues.length}] of [${data.total}]`);
-    var issues = issuesSoFar.concat(data.issues);
-    if ((data.issues && data.issues.length > 0) && (issues.length < data.total)) {
-      module.exports.loadDemand(demandInfo, issues, sinceTime, errorBody)
-      .then( function(issues) {  // unwind the promise chain
-        return issues;
-      })
-    } else {
-      return issues;
-    }
-  }).catch((error) => {
-    utils.logHttpError(logger, error)
-    if (error.response && error.response.statusCode) {
-      return Promise.reject(errorBody(error.response.statusCode, 'Error retrieving stories from Jira'));
-    }
-    return Promise.reject(error);
-  });
-}
-
-module.exports.testDemand = function(project, constants) {
+function testDemand(project, constants) {
   logger.info(`testDemand() for JIRA Project ${project.name}`);
   if (!ValidUrl.isUri(project.demand.url)) {
     return Promise.resolve({ status: constants.STATUSERROR, data: utils.validationResponseMessageFormat(`invalid demand URL [${project.demand.url}]`) });
@@ -135,7 +114,7 @@ module.exports.testDemand = function(project, constants) {
   }
 
   return Rest.get(
-    project.demand.url + buildJQL(project.demand.project, 0, moment().format('YYYY-MM-DD'), constants),
+    project.demand.url + _buildJQL(project.demand.project, 0, moment().format('YYYY-MM-DD'), constants),
     {headers: utils.createBasicAuthHeader(project.demand.userData)}
   ).then(() => ({ status: constants.STATUSOK }))
   .catch((error) => {
@@ -144,13 +123,42 @@ module.exports.testDemand = function(project, constants) {
   });
 }
 
+function _loadDemand(demandInfo, issuesSoFar, sinceTime, errorBody) {
+  logger.info(`loadDemand() for JIRA project ${demandInfo.project}.  Start Pos ${issuesSoFar.length}`);
+
+  if (!(ValidUrl.isUri(demandInfo.url))) {
+    return Promise.reject(errorBody(HttpStatus.BAD_REQUEST, `invalid demand URL [${demandInfo.url}]`));
+  }
+
+  return Rest.get(
+    demandInfo.url + _buildJQL(demandInfo.project, issuesSoFar.length, sinceTime),
+    {headers: utils.createBasicAuthHeader(demandInfo.userData)}
+  ).then(({ data }) => {
+    logger.info(`Success reading demand from [${data.startAt}] count [${data.issues.length}] of [${data.total}]`);
+    var issues = issuesSoFar.concat(data.issues);
+    if ((data.issues && data.issues.length > 0) && (issues.length < data.total)) {
+      _loadDemand(demandInfo, issues, sinceTime, errorBody)
+      .then( function(issues) {  // unwind the promise chain
+        return issues;
+      })
+    } else {
+      return issues;
+    }
+  }).catch((error) => {
+    utils.logHttpError(logger, error)
+    if (error.response && error.response.statusCode) {
+      return Promise.reject(errorBody(error.response.statusCode, 'Error retrieving stories from Jira'));
+    }
+    return Promise.reject(error);
+  });
+}
 
 // Just what the heck is going on here?
 // For whatever reason, when I searialze a Jira Issue,
 // the history item array turns into [Object] which isn't helpful at all
 // given that the array is always contains 1 element this essentially
 // turns the array of 1 element into an object so that it can be stored "correctly"
-module.exports.fixHistoryData = function(stories) {
+function _fixHistoryData (stories) {
   logger.info(`fixHistoryData for ${stories.length} stories`);
 
   stories.forEach(function (aStory) {
@@ -163,7 +171,7 @@ module.exports.fixHistoryData = function(stories) {
   return(stories);
 }
 
-function buildJQL(project, startPosition, since) {
+function _buildJQL(project, startPosition, since) {
   const expand = ['changelog', 'history', 'items'];
   const fields = ['issuetype', 'created', 'updated', 'status', 'key', 'summary'];
   const jqlData = `search?jql=project=${project} AND issueType=${localConstants.JIRADEMANDTYPE} AND updated>=${since}`;
@@ -171,4 +179,10 @@ function buildJQL(project, startPosition, since) {
 
   logger.debug(`queryString:[${queryString}]`);
   return queryString;
+}
+
+module.exports = {
+  loadRawData,
+  transformRawToCommon,
+  testDemand,
 }

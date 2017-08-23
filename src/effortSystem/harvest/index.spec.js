@@ -36,8 +36,6 @@ const EFFORTINFO = {
   userData: 'cGF1bC5rYXJzdGVuQHdpcHJvLmNvbTpXaDFwSXRHMDBk',
   role: []};
 
-const EXPECTEDTASKLIST = {5715688 :'Delivery', 6375838 :'Discovery'};
-
 const TIMERESPONSE = [
   {
     day_entry:
@@ -166,24 +164,36 @@ const CODENOTFOUND = 404;
 const MESSAGENOTFOUND = 'There Be Dragons';
 const ERRORRESULT = {statusCode: CODENOTFOUND, statusMessage: MESSAGENOTFOUND};
 
+const processingInfo = {
+  dbUrl: '',
+  rawLocation: '',
+  storageFunction(_, __, enhancedStories) {
+    return Promise.resolve(enhancedStories);
+  }
+}
+
+
 describe('Effort -> Harvest ->', () => {
+
+  const sandbox = Sinon.sandbox.create();
+
+  afterEach(() => {
+    sandbox.restore();
+  });
 
   describe('testHarvest - Stubbed Tests', function() {
     const TIMEERRORMESSAGE = 'Error retrieving time entries from Harvest';
     const TASKERRORMESSAGE = 'Error retrieving task entries from Harvest';
   
     beforeEach(function() {
-      this.get = Sinon.stub(Rest, 'get');
+      sandbox.stub(Rest, 'get');
     });
   
-    afterEach(function() {
-      Rest.get.restore();
-    })
-  
     it('Test Get Time Entries', function() {
-      Rest.get.resolves({ data: TIMERESPONSE, response: null });
+      Rest.get.onFirstCall().resolves({ data: TIMERESPONSE });
+      Rest.get.onSecondCall().resolves({ data: TASKREPONSE });
   
-      return harvest.getTimeEntries(EFFORTINFO, SINCETIME, errorBody)
+      return harvest.loadRawData(EFFORTINFO, processingInfo, SINCETIME, errorBody)
         .then(function(response) {
           Should(response.length).be.above(0);
           Should(response[0].day_entry).have.property('spent_at');
@@ -192,9 +202,9 @@ describe('Effort -> Harvest ->', () => {
     });
   
     it('Test Getting an empty set Time Entries', function() {
-      Rest.get.resolves({ data: [], response: null })
+      Rest.get.resolves({ data: [] })
   
-      return harvest.getTimeEntries(EFFORTINFO, null, errorBody)
+      return harvest.loadRawData(EFFORTINFO, processingInfo, null, errorBody)
         .then(function(response) {
           Should(response.length).equal(0);
         });
@@ -205,7 +215,7 @@ describe('Effort -> Harvest ->', () => {
   
       var badEffort = JSON.parse(JSON.stringify(EFFORTINFO));
       badEffort.project = BADPROJECT;
-      return harvest.getTimeEntries(badEffort, SINCETIME, errorBody)
+      return harvest.loadRawData(badEffort, processingInfo, SINCETIME, errorBody)
         .catch((response) => {
           Should(response).not.be.null;
           Should(response.statusCode).equal(CODENOTFOUND);
@@ -214,49 +224,49 @@ describe('Effort -> Harvest ->', () => {
     });
   
     it('Test Get Task Entries', function() {
-      Rest.get.resolves({ data: TASKREPONSE, response: null })
+      Rest.get.onFirstCall().resolves({ data: TIMERESPONSE });
+      Rest.get.onSecondCall().resolves({ data: TASKREPONSE });
   
-      return harvest.getTaskEntries(EFFORTINFO, errorBody)
+      return harvest.loadRawData(EFFORTINFO, processingInfo, null, errorBody)
         .then(function(response) {
-          Should(response).deepEqual(EXPECTEDTASKLIST);
+          Should(response[0].day_entry.task_id).equal(5715688);
         });
     });
   
     it('Test Getting a 404 response on Task Entries', function() {
-      Rest.get.rejects({ data: null, response: ERRORRESULT });
+      Rest.get.onFirstCall().resolves({ data: TIMERESPONSE });
+      Rest.get.onSecondCall().rejects({ data: null, response: ERRORRESULT });
   
-      var badEffort = JSON.parse(JSON.stringify(EFFORTINFO));
-      badEffort.project = BADPROJECT;
-      return harvest.getTaskEntries(badEffort, errorBody)
+      return harvest.loadRawData(EFFORTINFO, processingInfo, null,errorBody)
         .catch((reason) => {
           Should(reason).not.be.null;
           Should(reason.statusCode).equal(CODENOTFOUND);
           Should(reason.message).equal(TASKERRORMESSAGE);
         });
     });
-  });
-  
-  describe('testHarvest -  Utility Function Test', function() {
-  
-    it('Translate task_id into task_name', function(done) {
-      var time = JSON.parse(JSON.stringify(TIMERESPONSE));
-  
-      Should(time[0].day_entry).not.have.property('task_name');
-      Should(time[0]).not.have.property('_id');
-      harvest.replaceTaskIdwithName(time, EXPECTEDTASKLIST);
-      Should(time[0]).have.property('_id');
-      Should(time[0].day_entry).have.property('task_name');
-  
-      done();
+
+    it('Translate task_id into task_name', function() {
+      Rest.get.onFirstCall().resolves({ data: TIMERESPONSE });
+      Rest.get.onSecondCall().resolves({ data: TASKREPONSE });
+    
+      return harvest.loadRawData(EFFORTINFO, processingInfo, null, errorBody)
+      .then(function(response) {
+        Should(response[0].day_entry).have.property('task_name');
+      });
     });
   });
   
   describe('testHarvest -  Data Convertion Test', function() {
-    it('Convert', function(done) {
-      var commonDataFormat = harvest.transformRawToCommon(MODIFIEDTIMERESPONSE);
-  
-      Should(commonDataFormat).deepEqual(EXPECTEDCOMMONDATA);
-      done();
+    it('Convert', function() {
+      sandbox.stub(Rest, 'get');
+      Rest.get.onFirstCall().resolves({ data: TIMERESPONSE });
+      Rest.get.onSecondCall().resolves({ data: TASKREPONSE });
+    
+      return harvest.loadRawData(EFFORTINFO, processingInfo, null, errorBody)
+      .then(rawData => {
+        var commonDataFormat = harvest.transformRawToCommon(rawData);
+        Should(commonDataFormat).deepEqual(EXPECTEDCOMMONDATA);
+      });
     });
   });
   
@@ -265,13 +275,10 @@ describe('Effort -> Harvest ->', () => {
     var aSetOfInfo = {};
   
     beforeEach(function() {
-      Sinon.stub(harvest, 'getTimeEntries').rejects(ERRORRESULT);
+      sandbox.stub(Rest, 'get');
+      Rest.get.onFirstCall().rejects(ERRORRESULT);
     });
-  
-    afterEach(function() {
-      harvest.getTimeEntries.restore();
-    })
-  
+    
     it('Make sure the error is returned', function() {
   
       return harvest.loadRawData(EFFORTINFO, aSetOfInfo, SINCETIME)
@@ -287,15 +294,11 @@ describe('Effort -> Harvest ->', () => {
     var aSetOfInfo = {};
   
     beforeEach(function() {
-      Sinon.stub(harvest, 'getTimeEntries').resolves(TIMERESPONSE);
-      Sinon.stub(harvest, 'getTaskEntries').rejects(ERRORRESULT);
+      sandbox.stub(Rest, 'get');
+      Rest.get.onFirstCall().resolves({ data: TIMERESPONSE });
+      Rest.get.onSecondCall().rejects(ERRORRESULT);
     });
-  
-    afterEach(function() {
-      harvest.getTimeEntries.restore();
-      harvest.getTaskEntries.restore();
-    })
-  
+    
     it('Make sure the error is returned', function() {
   
       return harvest.loadRawData(EFFORTINFO, aSetOfInfo, SINCETIME)
@@ -312,19 +315,15 @@ describe('Effort -> Harvest ->', () => {
     var aSetOfInfo = {};
   
     beforeEach(function() {
-      this.getTimeEntries = Sinon.stub(harvest, 'getTimeEntries').resolves(TIMERESPONSE);
-      this.getTaskEntries = Sinon.stub(harvest, 'getTaskEntries').resolves(TASKREPONSE);
+      sandbox.stub(Rest, 'get');
+      Rest.get.onFirstCall().resolves({ data: TIMERESPONSE });
+      Rest.get.onSecondCall().resolves({ data: TASKREPONSE });
   
       aSetOfInfo = {
         dbUrl: 'a db url',
         rawLocation: 'a location',
         storageFunction() { return Promise.resolve(MODIFIEDTIMERESPONSE); },
       };
-    });
-  
-    afterEach(function() {
-      harvest.getTimeEntries.restore();
-      harvest.getTaskEntries.restore();
     });
   
     it('Make sure the proper count', function() {

@@ -4,7 +4,13 @@
   "description": "Defect, demand and effort systems for illuminate and eolas",
   "main": "index.js",
   "scripts": {
-    "test": "nyc mocha --opts ./mocha.opts"
+    "lint": "eslint ./",
+    "preversion": "npm run validate",
+    "postversion": "git push && git push --tags",
+    "security": "nsp check --output summary",
+    "test": "nyc mocha --opts ./mocha.opts",
+    "validate": "npm run lint && npm run test && npm run security",
+    "version": "git add -A"
   },
   "repository": {
     "type": "git",
@@ -33,6 +39,7 @@
   "devDependencies": {
     "eslint": "^4.5.0",
     "mocha": "^3.5.0",
+    "nsp": "^2.7.0",
     "nyc": "^11.1.0",
     "should": "^11.2.1",
     "sinon": "^3.2.1"

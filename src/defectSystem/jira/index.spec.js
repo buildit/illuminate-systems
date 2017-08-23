@@ -189,37 +189,47 @@ const MESSAGENOTFOUND = 'There Be Dragons';
 const ERRORRESULT = {statusCode: CODENOTFOUND, statusMessage: MESSAGENOTFOUND};
 const SINCETIME = '2000-01-01+00:00';
 
+const processingInfo = {
+  dbUrl: '',
+  rawLocation: '',
+  storageFunction(_, __, enhancedStories) {
+    return Promise.resolve(enhancedStories);
+  }
+}
+
 describe('Defect -> Jira ->', () => {
+  const sandbox = Sinon.sandbox.create();
+
+  afterEach(() => {
+    sandbox.restore();
+  })
 
   describe('Test Fixing of Jira Defect History', function() {
-  
-      it('Convert Jira Object', function(done) {
-        var fixedStory = jira.fixHistoryData([RAWJIRASTORY]);
-  
-        Should(fixedStory[0].changelog.histories[0].items).not.Array();
-        done();
+    it('Convert Jira Object', () => {
+      sandbox.stub(Rest, 'get').resolves({ data: { issues: [R.clone(RAWJIRASTORY)] } });
+      
+      return jira.loadRawData(DEFECTINFO, processingInfo, null, (e) => e)
+      .then(function(response) {
+        Should(response[0].changelog.histories[0].items).not.Array();
       });
+    });
   });
   
   describe('Empty result from Jira test', function() {
     var jiraResponse = {};
   
     beforeEach(function() {
-      this.get = Sinon.stub(Rest, 'get');
+      sandbox.stub(Rest, 'get');
       jiraResponse.statusCode = HttpStatus.OK;
     });
-  
-    afterEach(function() {
-      Rest.get.restore();
-    })
-  
+    
     it('Test Getting an empty set of Jira Defects', function() {
-      Rest.get.resolves({ data: EMPTYJIRARESPONSE, response: jiraResponse });
+      Rest.get.resolves({ data: EMPTYJIRARESPONSE });
   
-      return jira.loadDefects(DEFECTINFO, [], null, null)
-        .then(function(response) {
-          Should(response.length).equal(0);
-        });
+      return jira.loadRawData(DEFECTINFO, processingInfo, null, (e) => e)
+      .then(function(response) {
+        Should(response.length).equal(0);
+      });
     });
   });
   
@@ -227,18 +237,14 @@ describe('Defect -> Jira ->', () => {
     var jiraResponse = {};
   
     beforeEach(function() {
-      this.get = Sinon.stub(Rest, 'get');
+      this.get = sandbox.stub(Rest, 'get');
       jiraResponse.statusCode = HttpStatus.OK;
     });
-  
-    afterEach(function() {
-      Rest.get.restore();
-    })
-  
+    
     it('Test Getting an empty set of Jira defects', function() {
       Rest.get.resolves({ data: SINGLEJIRARESPOSE, response: jiraResponse });
   
-      return jira.loadDefects(DEFECTINFO, [], null, null)
+      return jira.loadRawData(DEFECTINFO, processingInfo, null, (e) => e)
         .then(function(response) {
           Should(response.length).equal(1);
         });
@@ -260,16 +266,12 @@ describe('Defect -> Jira ->', () => {
     var aSetOfInfo = {};
   
     beforeEach(function() {
-      Sinon.stub(jira, 'loadDefects').rejects(ERRORRESULT);
+      sandbox.stub(Rest, 'get').rejects(ERRORRESULT);
     });
+
   
-    afterEach(function() {
-      jira.loadDefects.restore();
-    })
-  
-    it('Make sure the error is returned', function() {
-  
-      return jira.loadRawData(DEFECTINFO, aSetOfInfo, SINCETIME)
+    it('Make sure the error is returned', function() {  
+      return jira.loadRawData(DEFECTINFO, aSetOfInfo, SINCETIME, (e) => e)
         .then(function() {
           Should.ok(false);
         }).catch ( function(error) {
@@ -279,9 +281,7 @@ describe('Defect -> Jira ->', () => {
     });
   });
   
-  describe('testDefect()', () => {
-    const sandbox = Sinon.sandbox.create();
-  
+  describe('testDefect()', () => {  
     const aProject = {
       name: 'Test Project',
       defect: {
@@ -293,10 +293,6 @@ describe('Defect -> Jira ->', () => {
         userData: 'some secret key',
       }
     };
-  
-    afterEach(() => {
-      sandbox.restore();
-    })
   
     it('returns an error when the url is invalid.', () => {
       return CO(function* () {

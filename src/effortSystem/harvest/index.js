@@ -17,21 +17,21 @@ logger.level = Config.get('log-level');
 //const MILLENIUM = '2000-01-01';
 //const DEFAULTSTARTDATE = MILLENIUM+'+00:00';
 
-exports.loadRawData = function(effortInfo, processingInfo, sinceTime, errorBody) {
+function loadRawData(effortInfo, processingInfo, sinceTime, errorBody) {
   logger.info(`loadRawData for ${effortInfo.project} updated since [${sinceTime}]`);
   logger.debug(`processing Instructions`);
   logger.debug(processingInfo);
 
   return new Promise(function (resolve, reject) {
-    module.exports.getTimeEntries(effortInfo, sinceTime, errorBody)
+    _getTimeEntries(effortInfo, sinceTime, errorBody)
       .then(function (timeData) {
         if (timeData.length < 1) {
           resolve(timeData);
         }
         logger.debug(`total time entries - ${timeData.length}`);
-        module.exports.getTaskEntries(effortInfo, errorBody)
+        _getTaskEntries(effortInfo, errorBody)
           .then(function (taskData) {
-            module.exports.replaceTaskIdwithName(timeData, taskData);
+            _replaceTaskIdwithName(timeData, taskData);
             processingInfo.storageFunction(processingInfo.dbUrl, processingInfo.rawLocation, timeData)
             .then (function (allRawData) {
               resolve(allRawData); // return the number of records
@@ -46,24 +46,62 @@ exports.loadRawData = function(effortInfo, processingInfo, sinceTime, errorBody)
         reject(reason);
       });
   });
-};
-
-const makeCommon = ({day_entry}) => ({
-  day: day_entry.spent_at,
-  role: day_entry.task_name,
-  effort: day_entry.hours
-});
-
-exports.transformRawToCommon = function(timeData) {
-  logger.info('mapHarvestEffort');
-
-  return R.map(makeCommon, timeData);
 }
 
-exports.getTimeEntries = function(effortInfo, startDate, errorBody) {
+function transformRawToCommon(timeData) {
+  logger.info('mapHarvestEffort');
+
+  return R.map(_makeCommon, timeData);
+}
+
+function testEffort(project, constants) {
+  logger.debug(`Harvest -> testEffort() for ${project.name}`);
+  if (!ValidUrl.isUri(project.effort.url)) {
+    logger.debug(`ERROR, invalid url: ${project.effort.url} on project ${project.name}`)
+    return Promise.resolve({ status: constants.STATUSERROR, data: utils.validationResponseMessageFormat(`invalid effort URL [${project.effort.url}])`) });
+  }
+  
+  if (R.isNil(project.effort.project) || R.isEmpty(project.effort.project)) {
+    return Promise.resolve({ status: constants.STATUSERROR, data: utils.validationResponseMessageFormat(`[Project] must be a valid Harvest project name`) });
+  }
+  
+  if (R.isNil(project.effort.authPolicy) || R.isEmpty(project.effort.authPolicy)) {
+    return Promise.resolve({ status: constants.STATUSERROR, data: utils.validationResponseMessageFormat(`[Auth Policy] must be filled out`) });
+  }
+  
+  if (R.isNil(project.effort.userData) || R.isEmpty(project.effort.userData)) {
+    return Promise.resolve({ status: constants.STATUSERROR, data: utils.validationResponseMessageFormat(`[User Data] must be filled out`) });
+  }
+  
+  if (R.isNil(project.effort.role) || R.isEmpty(project.effort.role)) {
+    return Promise.resolve({ status: constants.STATUSERROR, data: utils.validationResponseMessageFormat(`Missing [Role] information`) });
+  }
+  
+  var harvestURL = `${project.effort.url}/projects/${project.effort.project}/entries?from=${localConstants.DEFAULTSTARTDATE}&to=${_dateFormatIWant()}&updated_since=${moment().toISOString()}`;
+  
+  return Rest.get(
+    encodeURI(harvestURL),
+    {headers: utils.createBasicAuthHeader(project.effort.userData)}
+  ).then(() => ({ status: constants.STATUSOK }))
+  .catch((error) => {
+    utils.logHttpError(logger, error);
+    return ({ status: constants.STATUSERROR, data: error.data });
+  });
+}
+
+function _makeCommon({day_entry}) {
+  return {
+    day: day_entry.spent_at,
+    role: day_entry.task_name,
+    effort: day_entry.hours
+  }
+}
+
+
+function _getTimeEntries (effortInfo, startDate, errorBody) {
   logger.info(`getTimeEntries since ${startDate}`);
 
-  var harvestURL = `${effortInfo.url}/projects/${effortInfo.project}/entries?from=${localConstants.DEFAULTSTARTDATE}&to=${dateFormatIWant()}&updated_since=${startDate}+00:00`;
+  var harvestURL = `${effortInfo.url}/projects/${effortInfo.project}/entries?from=${localConstants.DEFAULTSTARTDATE}&to=${_dateFormatIWant()}&updated_since=${startDate}+00:00`;
   logger.debug(`getTimeEntries->harvestURL ${harvestURL}`);
   return Rest.get(
     encodeURI(harvestURL),
@@ -85,7 +123,7 @@ exports.getTimeEntries = function(effortInfo, startDate, errorBody) {
   });
 }
 
-exports.getTaskEntries = function(effortInfo, errorBody) {
+function _getTaskEntries(effortInfo, errorBody) {
   logger.info('getTaskEntries');
 
   var harvestURL = `${effortInfo.url}/tasks`;
@@ -111,7 +149,7 @@ exports.getTaskEntries = function(effortInfo, errorBody) {
   });
 }
 
-exports.replaceTaskIdwithName = function(timeData, taskData) {
+function _replaceTaskIdwithName(timeData, taskData) {
   logger.info('replaceTaskIdwithName');
 
   timeData.forEach(function(aTimeEntry) {
@@ -120,41 +158,13 @@ exports.replaceTaskIdwithName = function(timeData, taskData) {
   });
 }
 
-exports.testEffort = function(project, constants) {
-  logger.debug(`Harvest -> testEffort() for ${project.name}`);
-  if (!ValidUrl.isUri(project.effort.url)) {
-    logger.debug(`ERROR, invalid url: ${project.effort.url} on project ${project.name}`)
-    return Promise.resolve({ status: constants.STATUSERROR, data: utils.validationResponseMessageFormat(`invalid effort URL [${project.effort.url}])`) });
-  }
-  
-  if (R.isNil(project.effort.project) || R.isEmpty(project.effort.project)) {
-    return Promise.resolve({ status: constants.STATUSERROR, data: utils.validationResponseMessageFormat(`[Project] must be a valid Harvest project name`) });
-  }
-  
-  if (R.isNil(project.effort.authPolicy) || R.isEmpty(project.effort.authPolicy)) {
-    return Promise.resolve({ status: constants.STATUSERROR, data: utils.validationResponseMessageFormat(`[Auth Policy] must be filled out`) });
-  }
-  
-  if (R.isNil(project.effort.userData) || R.isEmpty(project.effort.userData)) {
-    return Promise.resolve({ status: constants.STATUSERROR, data: utils.validationResponseMessageFormat(`[User Data] must be filled out`) });
-  }
-  
-  if (R.isNil(project.effort.role) || R.isEmpty(project.effort.role)) {
-    return Promise.resolve({ status: constants.STATUSERROR, data: utils.validationResponseMessageFormat(`Missing [Role] information`) });
-  }
-  
-  var harvestURL = `${project.effort.url}/projects/${project.effort.project}/entries?from=${localConstants.DEFAULTSTARTDATE}&to=${dateFormatIWant()}&updated_since=${moment().toISOString()}`;
-  
-  return Rest.get(
-    encodeURI(harvestURL),
-    {headers: utils.createBasicAuthHeader(project.effort.userData)}
-  ).then(() => ({ status: constants.STATUSOK }))
-  .catch((error) => {
-    utils.logHttpError(logger, error);
-    return ({ status: constants.STATUSERROR, data: error.data });
-  });
+
+function _dateFormatIWant() {
+  return moment.utc().format('YYYY-MM-DD');
 }
 
-function dateFormatIWant() {
-  return moment.utc().format('YYYY-MM-DD');
+module.exports = {
+  loadRawData,
+  transformRawToCommon,
+  testEffort
 }

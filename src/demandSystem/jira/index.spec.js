@@ -1,6 +1,5 @@
 const jira = require('./');
 const Config = require('config');
-const HttpStatus = require('http-status-codes');
 const Log4js = require('log4js');
 const Should = require('should');
 const Sinon = require('sinon');
@@ -540,22 +539,41 @@ function errorBody(statusCode, message) {
   }
 }
 
+const processingInfo = {
+  dbUrl: '',
+  rawLocation: '',
+  storageFunction(_, __, enhancedStories) {
+    return Promise.resolve(enhancedStories);
+  }
+}
+
 describe('Demand -> Jira ->', () => {
+  const sandbox = Sinon.sandbox.create();
+
+  afterEach(() => {
+    sandbox.restore();
+  })
 
   describe('Test processing History Data', function() {
-  
-      it('remove the history array add _id', function(done) {
-        var fixedStory = jira.fixHistoryData([RAWJIRASTORY]);
-  
-        Should(fixedStory[0].changelog.histories[0].items).not.Array();
-        Should(fixedStory[0]).have.property('_id');
-        done();
+
+      beforeEach(() => {
+        sandbox.stub(Rest, 'get').resolves({ data: { issues: [R.clone(RAWJIRASTORY)] } });
       });
   
-      it('convert Jira issue to common format', function(done) {
-        var commonDataFormat = jira.transformRawToCommon([RAWJIRASTORY], DEMANDINFO);
-        Should(commonDataFormat).match(EXPECTEDCOMMON);
-        done();
+      it('remove the history array add _id', function() {
+        return jira.loadRawData(DEMANDINFO, processingInfo, null, errorBody)
+        .then(rawStories =>{
+          Should(rawStories[0].changelog.histories[0].items).not.Array();
+          Should(rawStories[0]).have.property('_id');
+        });
+      });
+  
+      it('convert Jira issue to common format', function() {
+        return jira.loadRawData(DEMANDINFO, processingInfo, null, errorBody)
+        .then(rawStories =>{
+          const commonDataFormat = jira.transformRawToCommon(rawStories, DEMANDINFO);
+          Should(commonDataFormat).match(EXPECTEDCOMMON);
+        });
       });
   });
   
@@ -563,17 +581,12 @@ describe('Demand -> Jira ->', () => {
     var jiraResponse = {};
   
     beforeEach(function() {
-      Sinon.stub(Rest, 'get')
-      jiraResponse.statusCode = HttpStatus.OK;
+      sandbox.stub(Rest, 'get')
     });
-  
-    afterEach(function() {
-      Rest.get.restore();
-    })
   
     it('Test Getting an empty set of Jira Issues', function() {
       Rest.get.resolves({ data: EMPTYJIRARESPONSE, response: jiraResponse });
-      return jira.loadDemand(DEMANDINFO, [], SINCETIME, errorBody)
+      return jira.loadRawData(DEMANDINFO, processingInfo, null, errorBody)
       .then(function(response) {
         Should(response.length).equal(0);
       });
@@ -584,18 +597,13 @@ describe('Demand -> Jira ->', () => {
     var jiraResponse = {};
   
     beforeEach(function() {
-      this.get = Sinon.stub(Rest, 'get');
-      jiraResponse.statusCode = HttpStatus.OK;
+      sandbox.stub(Rest, 'get');
     });
-  
-    afterEach(function() {
-      Rest.get.restore();
-    })
   
     it('Test Getting an single set of Jira Issues', function() {
       Rest.get.resolves({ data: SINGLEJIRARESPOSE, response: jiraResponse })
   
-      return jira.loadDemand(DEMANDINFO, [], SINCETIME, errorBody)
+      return jira.loadRawData(DEMANDINFO, processingInfo, null, errorBody)
       .then(function(response) {
         Should(response.length).equal(1);
       });
@@ -606,15 +614,10 @@ describe('Demand -> Jira ->', () => {
     var aSetOfInfo = {};
   
     beforeEach(function() {
-      Sinon.stub(jira, 'loadDemand').rejects(ERRORRESULT);
+      sandbox.stub(Rest, 'get').rejects(ERRORRESULT);
     });
-  
-    afterEach(function() {
-      jira.loadDemand.restore();
-    })
-  
+    
     it('Make sure the error is returned', function() {
-  
       return jira.loadRawData(DEMANDINFO, aSetOfInfo, SINCETIME)
         .then(function() {
           Should.ok(false);
@@ -625,9 +628,7 @@ describe('Demand -> Jira ->', () => {
     });
   });
   
-  describe('Jira testDemand() ->', () => {
-    const sandbox = Sinon.sandbox.create();
-  
+  describe('Jira testDemand() ->', () => {  
     const aProject = {
       name: 'Test Project',
       demand: {
@@ -639,10 +640,6 @@ describe('Demand -> Jira ->', () => {
         userData: 'some secret key',
       }
     };
-  
-    afterEach(() => {
-      sandbox.restore();
-    })
   
     it('returns an error when the url is invalid.', () => {
       return CO(function* () {

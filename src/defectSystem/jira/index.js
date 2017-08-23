@@ -16,18 +16,27 @@ logger.let = Config.get('log-level');
 
 
 
-module.exports.loadRawData = function(defectInfo, processingInfo, sinceTime, errorBody) {
+/**
+ * Loads raw data from Jira
+ * 
+ * @param {any} defectInfo 
+ * @param {any} processingInfo { dbUrl: string, rawLocation (collectionName): string, storageFunction: fn to post data to db }
+ * @param {any} sinceTime start of the Defect 
+ * @param {any} errorBody function to transform errors into a common format.
+ * @returns Promise with the raw data.
+ */
+function loadRawData(defectInfo, processingInfo, sinceTime, errorBody) {
   logger.info(`loadBugEntries for ${defectInfo.project} updated since [${sinceTime}]`);
 
   return new Promise(function (resolve, reject) {
-    module.exports.loadDefects(defectInfo, [], sinceTime, errorBody)
+    _loadDefects(defectInfo, [], sinceTime, errorBody)
     .then( function (stories) {
       logger.debug(`total stories read - ${stories.length}`);
       if (stories.length < 1) {
         resolve(stories);
       }
 
-      var enhancedStories = module.exports.fixHistoryData(stories);
+      var enhancedStories = _fixHistoryData(stories);
       processingInfo.storageFunction(processingInfo.dbUrl, processingInfo.rawLocation, enhancedStories)
       .then (function (allRawData) {
         resolve(allRawData);
@@ -43,7 +52,14 @@ module.exports.loadRawData = function(defectInfo, processingInfo, sinceTime, err
   });
 }
 
-module.exports.transformRawToCommon = function(issueData, systemInformation) {
+/**
+ * Transforms Raw Jira Defect data into the common data format.
+ * 
+ * @param {any} issueData The raw data from Jira
+ * @param {any} systemInformation { initialStatus: string representation of Defect's intial state, i.e. 'CREATED' }
+ * @returns transformed data (Common Data Format)
+ */
+function transformRawToCommon(issueData, systemInformation) {
   logger.info('mapJiraDefect into a common format');
 
   var commonDataFormat = [];
@@ -90,49 +106,14 @@ module.exports.transformRawToCommon = function(issueData, systemInformation) {
   return commonDataFormat;
 }
 
-function buildJQL(project, startPosition, since) {
-  const expand = ['changelog', 'history', 'items'];
-  const fields = ['issuetype', 'created', 'updated', 'status', 'key', 'summary'];
-  const jqlData = `search?jql=project=${project} AND issueType=${localConstants.JIRADEFECTTYPE} AND updated>=${since}`;
-  const queryString = `${jqlData}&startAt=${startPosition}&expand=${expand.toString()}&fields=${fields.toString()}`;
-
-  logger.debug(`queryString:[${queryString}]`);
-  return queryString;
-}
-
-module.exports.loadDefects = function(defectInfo, issuesSoFar, sinceTime, errorBody) {
-  logger.info(`loadJiraDefects() for JIRA project ${defectInfo.project}.  Start Pos ${issuesSoFar.length}`);
-
-  if (!(ValidUrl.isUri(defectInfo.url))) {
-    return Promise.reject(errorBody(HttpStatus.BAD_REQUEST, `invalid defect URL [${defectInfo.url}]`));
-  }
-
-  return Rest.get(
-    defectInfo.url + buildJQL(defectInfo.project, issuesSoFar.length, sinceTime),
-    {headers: utils.createBasicAuthHeader(defectInfo.userData)}
-  ).then(({ data }) => {
-    logger.info(`Success reading demand from [${data.startAt}] count [${data.issues.length}] of [${data.total}]`);
-
-    var issues = issuesSoFar.concat(data.issues);
-    if ((data.issues.length > 0) && (issues.length < data.total)) {
-      module.exports.loadDemand(defectInfo, issues, sinceTime, errorBody)
-      .then( function(issues) {  // unwind the promise chain
-        return issues;
-      })
-    } else {
-      return issues;
-    }
-  }).catch((error) => {
-    utils.logHttpError(logger, error)
-    if (error.response && error.response.statusCode) {
-      return Promise.reject(errorBody(error.response.statusCode, 'Error retrieving stories from Jira'));
-    }
-    return Promise.reject(error);
-  });
-}
-
-
-module.exports.testDefect = function(project, constants) {
+/**
+ * Tests whether the defect data can be read from Jira
+ * 
+ * @param {any} project as stored in the datastore.
+ * @param {any} constants requires { STATUSERROR: '#color', STATUSOK: '#color' }
+ * @returns Promise with the status of the connection attempt.
+ */
+function testDefect(project, constants) {
   logger.info(`testDefect() for JIRA Project ${project.name}`);
   if (!ValidUrl.isUri(project.defect.url)) {
     return Promise.resolve({ status: constants.STATUSERROR, data: utils.validationResponseMessageFormat(`invalid defect URL [${project.defect.url}]`) });
@@ -155,12 +136,53 @@ module.exports.testDefect = function(project, constants) {
   }
 
   return Rest.get(
-    project.defect.url + buildJQL(project.defect.project, 0, moment().format('YYYY-MM-DD')),
+    project.defect.url + _buildJQL(project.defect.project, 0, moment().format('YYYY-MM-DD')),
     {headers: utils.createBasicAuthHeader(project.defect.userData)}
   ).then(() => ({ status: constants.STATUSOK }))
   .catch((error) => {
     utils.logHttpError(logger, error);
     return ({ status: constants.STATUSERROR, data: error.data });
+  });
+}
+
+function _buildJQL(project, startPosition, since) {
+  const expand = ['changelog', 'history', 'items'];
+  const fields = ['issuetype', 'created', 'updated', 'status', 'key', 'summary'];
+  const jqlData = `search?jql=project=${project} AND issueType=${localConstants.JIRADEFECTTYPE} AND updated>=${since}`;
+  const queryString = `${jqlData}&startAt=${startPosition}&expand=${expand.toString()}&fields=${fields.toString()}`;
+
+  logger.debug(`queryString:[${queryString}]`);
+  return queryString;
+}
+
+function _loadDefects (defectInfo, issuesSoFar, sinceTime, errorBody) {
+  logger.info(`loadJiraDefects() for JIRA project ${defectInfo.project}.  Start Pos ${issuesSoFar.length}`);
+
+  if (!(ValidUrl.isUri(defectInfo.url))) {
+    return Promise.reject(errorBody(HttpStatus.BAD_REQUEST, `invalid defect URL [${defectInfo.url}]`));
+  }
+
+  return Rest.get(
+    defectInfo.url + _buildJQL(defectInfo.project, issuesSoFar.length, sinceTime),
+    {headers: utils.createBasicAuthHeader(defectInfo.userData)}
+  ).then(({ data }) => {
+    logger.info(`Success reading demand from [${data.startAt}] count [${data.issues.length}] of [${data.total}]`);
+
+    var issues = issuesSoFar.concat(data.issues);
+    if ((data.issues.length > 0) && (issues.length < data.total)) {
+      _loadDefects(defectInfo, issues, sinceTime, errorBody)
+      .then( function(issues) {  // unwind the promise chain
+        return issues;
+      })
+    } else {
+      return issues;
+    }
+  }).catch((error) => {
+    utils.logHttpError(logger, error)
+    if (error.response && error.response.statusCode) {
+      return Promise.reject(errorBody(error.response.statusCode, 'Error retrieving stories from Jira'));
+    }
+    return Promise.reject(error);
   });
 }
 
@@ -170,15 +192,21 @@ module.exports.testDefect = function(project, constants) {
 // the history item array turns into [Object] which isn't helpful at all
 // given that the array is always contains 1 element this essentially
 // turns the array of 1 element into an object so that it can be stored "correctly"
-module.exports.fixHistoryData = function(stories) {
+function _fixHistoryData(stories) {
   logger.info(`fixHistoryData for ${stories.length} stories`);
 
   stories.forEach(function (aStory) {
     aStory['_id'] = aStory.id;
     aStory.changelog.histories.forEach(function (history) {
-      history.items = JSON.parse(JSON.stringify(history.items[0]));
+      history.items = R.clone(history.items[0]);
     });
   });
 
   return(stories);
+}
+
+module.exports = {
+  loadRawData,
+  transformRawToCommon,
+  testDefect,
 }

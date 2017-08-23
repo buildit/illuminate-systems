@@ -17,36 +17,13 @@ const type = 'TRELLO'
 
 function loadRawData (demandInfo, processingInfo, sinceTime, errorBody) {
   logger.info(`loadStoryEntries(${type}) for ${demandInfo.project} updated since [${sinceTime}]`);
-  return module.exports.loadDemand(demandInfo, sinceTime, errorBody)
+  return _loadDemand(demandInfo, sinceTime, errorBody)
   .then(stories => {
     logger.debug(`total stories read - ${stories.length}`);
     if (stories.length < 1) {
       return [];
     }
     return processingInfo.storageFunction(processingInfo.dbUrl, processingInfo.rawLocation, stories)
-  });
-}
-
-function loadDemand (demandInfo, sinceTime, errorBody) {
-  const sinceMoment = moment(sinceTime, localConstants.DBDATEFORMAT);
-  logger.info(`loadDemand() for ${type} project ${demandInfo.project}`);
-
-  return Rest.get(appendAuth(`${demandInfo.url}/cards?fields=id,labels,dateLastActivity,shortUrl&actions=updateCard,createCard`, demandInfo))
-  .then(({ data }) => {
-    logger.info(`Success reading demand: count [${data.length}]`);
-    const returner = data
-    .filter(card => card.actions.length > 0)
-    .filter(card => sinceMoment.isSameOrBefore(moment(card.dateLastActivity)))
-    .map(card => R.merge(card, { creationDate: getCardCreationDate(card.id), _id: card.id }))
-
-    return returner;
-  })
-  .catch((error) => {
-    utils.logHttpError(logger, error)
-    if (error.response && error.response.statusCode) {
-      return Promise.reject(errorBody(error.response.statusCode, 'Error retrieving stories from Jira'));
-    }
-    return Promise.reject(error);
   });
 }
 
@@ -103,7 +80,7 @@ function testDemand(project, constants) {
     return Promise.resolve({ status: constants.STATUSERROR, data: utils.validationResponseMessageFormat(`Missing [Flow] information`) });
   }
 
-  return Rest.get(appendAuth(`${project.demand.url}/cards?fields=id&limit=1`, project.demand))
+  return Rest.get(_appendAuth(`${project.demand.url}/cards?fields=id&limit=1`, project.demand))
   .then(() => ({ status: constants.STATUSOK }))
   .catch((error) => {
     utils.logHttpError(logger, error);
@@ -111,20 +88,42 @@ function testDemand(project, constants) {
   });
 }
 
-function appendAuth(url, demandInfo) {
+function _loadDemand (demandInfo, sinceTime, errorBody) {
+  const sinceMoment = moment(sinceTime, localConstants.DBDATEFORMAT);
+  logger.info(`loadDemand() for ${type} project ${demandInfo.project}`);
+
+  return Rest.get(_appendAuth(`${demandInfo.url}/cards?fields=id,labels,dateLastActivity,shortUrl&actions=updateCard,createCard`, demandInfo))
+  .then(({ data }) => {
+    logger.info(`Success reading demand: count [${data.length}]`);
+    const returner = data
+    .filter(card => card.actions.length > 0)
+    .filter(card => sinceMoment.isSameOrBefore(moment(card.dateLastActivity)))
+    .map(card => R.merge(card, { creationDate: _getCardCreationDate(card.id), _id: card.id }))
+
+    return returner;
+  })
+  .catch((error) => {
+    utils.logHttpError(logger, error)
+    if (error.response && error.response.statusCode) {
+      return Promise.reject(errorBody(error.response.statusCode, 'Error retrieving stories from Jira'));
+    }
+    return Promise.reject(error);
+  });
+}
+
+function _appendAuth(url, demandInfo) {
   const keys = demandInfo.authPolicy.split(':');
   const values = demandInfo.userData.split(':');
   const divider = url.includes('?') ? '&' : '?';
   return `${url}${divider}${keys[0]}=${values[0]}&${keys[1]}=${values[1]}`;
 }
 
-function getCardCreationDate(cardId) {
+function _getCardCreationDate(cardId) {
   return moment.unix(parseInt(cardId.substring(0,8),16)).toISOString();
 }
 
 module.exports = {
   loadRawData,
-  loadDemand,
   transformRawToCommon,
   testDemand,
 }
