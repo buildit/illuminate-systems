@@ -1,6 +1,6 @@
 {
   "name": "@buildit/illuminate-systems",
-  "version": "0.1.6",
+  "version": "0.1.7",
   "description": "Defect, demand and effort systems for illuminate and eolas",
   "main": "index.js",
   "scripts": {
